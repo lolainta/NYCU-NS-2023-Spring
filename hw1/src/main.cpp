@@ -1,7 +1,11 @@
 #include<iostream>
 #include<getopt.h>
+#include<pcap/pcap.h>
 
 using namespace std;
+using str=string;
+
+char errbuf[PCAP_ERRBUF_SIZE];
 
 void usage(char*p){
     cout<<"Usage:\n\t";
@@ -39,7 +43,22 @@ void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter
     }
     if(iface==""){
         usage(argv[0]);
-        cout<<"You need to specify an interface!"<<endl;
+        cerr<<"You need to specify an interface!"<<endl;
+        exit(1);
+    }
+    bool check=false;
+    pcap_if_t*devs=nullptr;
+    if(pcap_findalldevs(&devs,errbuf)==-1){
+        perror("pcap_findalldevs");
+        cerr<<errbuf<<endl;
+        exit(1);
+    }
+    for(pcap_if_t*dev=devs;dev;dev=dev->next){
+        if(str(dev->name)==iface.c_str())
+            check=true;
+    }
+    if(!check){
+        cerr<<"Unknown interface!"<<endl;
         exit(1);
     }
 }
