@@ -1,6 +1,12 @@
-#include<iostream>
-#include<getopt.h>
-#include<pcap/pcap.h>
+#include <iostream>
+#include <cassert>
+#include <getopt.h>
+#include <pcap/pcap.h>
+#include <string.h>
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+
+#include "headers.h"
 
 using namespace std;
 using str=string;
@@ -35,8 +41,6 @@ void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter
             break;
         case 'f':
             filter=optarg;
-            if(filter=="all")
-                filter.clear();
             break;
         default:
             usage(argv[0]);
@@ -48,6 +52,9 @@ void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter
         cerr<<"You need to specify an interface!"<<endl;
         exit(1);
     }
+    if(filter=="all")
+        filter.clear();
+    return;
     bool check=false;
     pcap_if_t*devs=nullptr;
     if(pcap_findalldevs(&devs,errbuf)==-1){
@@ -65,6 +72,16 @@ void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter
     }
 }
 
+void hexdump(uint8_t*msg,int sz){
+    int cnt=0;
+    for(int i=0;i<sz;++i,++cnt){
+        if(cnt%8==0 and i)
+            cout<<endl;
+        cout<<hex<<(int)msg[i]<<' ';
+    }
+    cout<<endl;
+}
+
 int main(int argc,char*argv[]){
     int count;
     string iface,filter;
@@ -77,6 +94,7 @@ int main(int argc,char*argv[]){
         exit(1);
     }
 
+    cout<<filter<<endl;
     bpf_program fp;
     if(pcap_compile(handle,&fp,filter.c_str(),1,PCAP_NETMASK_UNKNOWN)==-1){
         pcap_perror(handle,"pcap_compile");
@@ -94,8 +112,32 @@ int main(int argc,char*argv[]){
             perror("pcap_next");
             exit(1);
         }
-        cout<<i<<" got packet"<<endl;
+        assert(hdr.caplen==hdr.len);
+
+        sniff_ethernet eth_hdr;
+        memcpy(&eth_hdr,packet,ETHER_ADDR_LEN*2+2);
+        packet+=ETHER_ADDR_LEN*2+2;
+
+        sniff_ip ip_hdr;
+        memcpy(&ip_hdr,packet,20);
+        packet+=20;
+        switch(ip_hdr.ip_p){
+        case 0x01:
+            cout<<"ICMP"<<endl;
+            break;
+        case 0x06:
+            cout<<"TCP"<<endl;
+            break;
+        case 0x11:
+            cout<<"UDP"<<endl;
+            break;
+        default:
+            cout<<"Not implemented protocol"<<endl;
+        }
+        cout<<"==================="<<endl;
     }
+
+    pcap_close(handle);
 
     return 0;
 }
