@@ -8,6 +8,7 @@ struct sniff_ethernet {
     u_short ether_type; /* IP? ARP? RARP? etc */
 };
 
+#define SIZE_ETHERNET 14
 /* IP header */
 struct sniff_ip {
     u_char ip_vhl;      /* version << 4 | header length >> 2 */

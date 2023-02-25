@@ -2,7 +2,6 @@
 #include <cassert>
 #include <getopt.h>
 #include <pcap/pcap.h>
-#include <string.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
@@ -114,14 +113,12 @@ int main(int argc,char*argv[]){
         }
         assert(hdr.caplen==hdr.len);
 
-        sniff_ethernet eth_hdr;
-        memcpy(&eth_hdr,packet,ETHER_ADDR_LEN*2+2);
-        packet+=ETHER_ADDR_LEN*2+2;
+        // sniff_ethernet*eth_hdr=(sniff_ethernet*)packet;
+        packet+=SIZE_ETHERNET;
 
-        sniff_ip ip_hdr;
-        memcpy(&ip_hdr,packet,20);
+        sniff_ip*ip_hdr=(sniff_ip*)packet;
         packet+=20;
-        switch(ip_hdr.ip_p){
+        switch(ip_hdr->ip_p){
         case 0x01:
             cout<<"ICMP"<<endl;
             break;
