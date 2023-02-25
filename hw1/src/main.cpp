@@ -1,59 +1,53 @@
-#include <iostream>
-#include <pcap/pcap.h>
-#include <string.h>
-#include <vector>
+#include<iostream>
+#include<getopt.h>
+
 using namespace std;
 
-int main(int argc,const char*argv[]){
-    pcap_if_t*devices=NULL;
-    char errbuf[PCAP_ERRBUF_SIZE];
-    char ntop_buf[256];
-    struct ether_header*eptr;
-    vector<pcap_if_t*>vec; // vec is a vector of pointers pointing to pcap_if_t
+void usage(char*p){
+    cout<<"Usage:\n\t";
+    cout<<p<<" [-i|--interface <interface name>] [-c|--count <number of packets>] [-f|--filter <filters>]"<<endl;
+}
 
-    // get all devices
-    if(pcap_findalldevs(&devices,errbuf)==-1){
-        fprintf(stderr,"pcap_findalldevs: %s\n",errbuf); // if error, fprint error message --> errbuf
+void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter){
+    const char*sopts="i:c:f:";
+    const option lopts[]={
+        {"interface",required_argument,nullptr,'i'},
+        {"count",required_argument,nullptr,'c'},
+        {"filter",required_argument,nullptr,'f'}
+    };
+    count=-1;
+    iface.clear();
+    filter="all";
+    for(;;){
+        const auto opt=getopt_long(argc,argv,sopts,lopts,nullptr);
+        if(opt==-1)
+            break;
+        switch(opt){
+        case 'i':
+            iface=optarg;
+            break;
+        case 'c':
+            count=stoi(optarg);
+            break;
+        case 'f':
+            filter=optarg;
+            break;
+        default:
+            usage(argv[0]);
+            exit(1);
+        }
+    }
+    if(iface==""){
+        usage(argv[0]);
+        cout<<"You need to specify an interface!"<<endl;
         exit(1);
     }
+}
 
-    // list all device
-    int cnt=0;
-    for(pcap_if_t*d=devices;d;d=d->next,cnt++){
-        vec.push_back(d);
-        cout<<"Name: "<<d->name<<endl;
-    }
-
-    // for filter, compiled in "pcap_compile
-    struct bpf_program fp;
-    pcap_t*handle;
-    string iface("enp6s18");
-    // pcap_open_live(device, snaplen, promise, to_ms, errbuf), interface is your interface, type is "char *"
-    handle=pcap_open_live(iface.c_str(),65535,1,1,errbuf);
-
-    if(!handle || handle==NULL){
-        fprintf(stderr,"pcap_open_live(): %s\n",errbuf);
-        exit(1);
-    }
-
-    // compile "your filter" into a filter program, type of {your_filter} is "char *"
-    string filter("");
-    if(pcap_compile(handle,&fp,filter.c_str(),1,PCAP_NETMASK_UNKNOWN)==-1){
-        pcap_perror(handle,"pkg_compile compile error\n");
-        exit(1);
-    }
-    if(pcap_setfilter(handle,&fp)==-1) { // make it work
-        pcap_perror(handle,"set filter error\n");
-        exit(1);
-    }
-
-    /*
-    while(1){
-        const unsigned char*packet=pcap_next(handle,&header);
-    }
-    */
-
-    pcap_freealldevs(devices);
-
+int main(int argc,char*argv[]){
+    int count;
+    string iface,filter;
+    process_arguments(argc,argv,iface,count,filter);
+    cout<<iface<<' '<<count<<' '<<filter<<endl;
     return 0;
 }
