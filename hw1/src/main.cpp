@@ -102,37 +102,47 @@ int main(int argc,char*argv[]){
 
         sniff_ip*ip_hdr=(sniff_ip*)packet;
         packet+=IP_HL(ip_hdr)<<2;
-        assert(IP_V(ip_hdr)==0x4);
 
         string src(inet_ntoa(ip_hdr->ip_src));
         string dst(inet_ntoa(ip_hdr->ip_dst));
+        uint16_t pkt_len(ntohs(ip_hdr->ip_len));
+        pkt_len-=IP_HL(ip_hdr)<<2;
+
         cout<<src<<" > "<<dst<<endl;
 
         switch(ip_hdr->ip_p){
         case 0x01:{
-            cout<<"ICMP"<<endl;
             sniff_icmp*icmp_hdr=(sniff_icmp*)packet;
             packet+=sizeof(icmp_hdr);
+
+            cout<<"ICMP"<<endl;
             cout<<"type: "<<dec<<(int)icmp_hdr->icmp_type<<endl;
             break;
         }case 0x06:{
             sniff_tcp*tcp_hdr=(sniff_tcp*)packet;
             packet+=TH_OFF(tcp_hdr)<<2;
-            uint8_t*payload=(uint8_t*)packet;
-            cout<<"TCP"<<endl;
+            pkt_len-=TH_OFF(tcp_hdr)<<2;
             uint16_t sport=ntohs(tcp_hdr->th_sport);
             uint16_t dport=ntohs(tcp_hdr->th_dport);
+
+            cout<<"TCP"<<endl;
             cout<<dec<<sport<<' '<<dport<<endl;
+
+            uint8_t*payload=(uint8_t*)packet;
+            cout<<"payload length: "<<pkt_len<<endl;
             break;
         }case 0x11:{
             sniff_udp*udp_hdr=(sniff_udp*)packet;
             packet+=sizeof(udp_hdr);
-            uint8_t*payload=(uint8_t*)packet;
+            pkt_len-=sizeof(udp_hdr);
             uint16_t sport=ntohs(udp_hdr->uh_sport);
             uint16_t dport=ntohs(udp_hdr->uh_dport);
+
             cout<<"UDP"<<endl;
             cout<<dec<<sport<<' '<<dport<<endl;
 
+            uint8_t*payload=(uint8_t*)packet;
+            cout<<"payload length: "<<pkt_len<<endl;
             break;
         }default:{
             cout<<"Not implemented protocol"<<endl;
