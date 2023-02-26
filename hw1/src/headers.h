@@ -28,6 +28,15 @@ struct sniff_ip {
 #define IP_HL(ip)       (((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)        (((ip)->ip_vhl) >> 4)
 
+/* ICMP header */
+
+struct sniff_icmp {
+    u_char icmp_type;
+    u_char icmp_code;
+    u_short icmp_sum;
+    u_int icmp_rest;
+};
+
 /* TCP header */
 typedef u_int tcp_seq;
 
@@ -37,7 +46,7 @@ struct sniff_tcp {
     tcp_seq th_seq;     /* sequence number */
     tcp_seq th_ack;     /* acknowledgement number */
     u_char th_offx2;    /* data offset, rsvd */
-#define TH_OFF(th)  (((th)->th_offx2 & 0xf0) > 4)
+#define TH_OFF(th)  (((th)->th_offx2 & 0xf0) >> 4)
     u_char th_flags;
 #define TH_FIN 0x01
 #define TH_SYN 0x02

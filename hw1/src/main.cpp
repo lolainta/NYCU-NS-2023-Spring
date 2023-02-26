@@ -53,22 +53,6 @@ void process_arguments(int argc,char*argv[],string&iface,int&count,string&filter
     }
     if(filter=="all")
         filter.clear();
-    return;
-    bool check=false;
-    pcap_if_t*devs=nullptr;
-    if(pcap_findalldevs(&devs,errbuf)==-1){
-        perror("pcap_findalldevs");
-        cerr<<errbuf<<endl;
-        exit(1);
-    }
-    for(pcap_if_t*dev=devs;dev;dev=dev->next){
-        if(str(dev->name)==iface.c_str())
-            check=true;
-    }
-    if(!check){
-        cerr<<"Unknown interface!"<<endl;
-        exit(1);
-    }
 }
 
 void hexdump(uint8_t*msg,int sz){
@@ -117,19 +101,31 @@ int main(int argc,char*argv[]){
         packet+=SIZE_ETHERNET;
 
         sniff_ip*ip_hdr=(sniff_ip*)packet;
-        packet+=20;
+        packet+=IP_HL(ip_hdr)<<2;
+        assert(IP_V(ip_hdr)==0x4);
+
+        string src(inet_ntoa(ip_hdr->ip_src));
+        string dst(inet_ntoa(ip_hdr->ip_dst));
+        cout<<src<<" > "<<dst<<endl;
+
         switch(ip_hdr->ip_p){
-        case 0x01:
+        case 0x01:{
             cout<<"ICMP"<<endl;
+            sniff_icmp*icmp_hdr=(sniff_icmp*)packet;
+            packet+=sizeof(icmp_hdr);
+            cout<<"type: "<<dec<<(int)icmp_hdr->icmp_type<<endl;
             break;
-        case 0x06:
+        }case 0x06:{
+            sniff_tcp*tcp_hdr=(sniff_tcp*)packet;
+            packet+=TH_OFF(tcp_hdr)<<2;
             cout<<"TCP"<<endl;
             break;
-        case 0x11:
+        }case 0x11:{
             cout<<"UDP"<<endl;
             break;
-        default:
+        }default:{
             cout<<"Not implemented protocol"<<endl;
+        }
         }
         cout<<"==================="<<endl;
     }
