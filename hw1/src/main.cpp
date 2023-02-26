@@ -116,7 +116,7 @@ int main(int argc,char*argv[]){
             cout<<"Transport type: ICMP"<<endl;
             cout<<"Source IP: "<<src<<endl;
             cout<<"Destination IP: "<<dst<<endl;
-            cout<<"ICMP type value: "<<dec<<icmp_hdr->icmp_type<<endl;
+            cout<<"ICMP type value: "<<dec<<(int)icmp_hdr->icmp_type<<endl;
             break;
         }case 0x06:{
             sniff_tcp*tcp_hdr=(sniff_tcp*)packet;
