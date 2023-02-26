@@ -27,6 +27,5 @@ run: $(BUILD_DIR)/main
 
 clean:
 	rm -r $(BUILD_DIR)
-	rm -rf $(TEST_DEST_DIR)
 	rm -f main
 
