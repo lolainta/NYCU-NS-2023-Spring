@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 #include <getopt.h>
 #include <pcap/pcap.h>
@@ -77,7 +78,6 @@ int main(int argc,char*argv[]){
         exit(1);
     }
 
-    cout<<filter<<endl;
     bpf_program fp;
     if(pcap_compile(handle,&fp,filter.c_str(),1,PCAP_NETMASK_UNKNOWN)==-1){
         pcap_perror(handle,"pcap_compile");
@@ -108,15 +108,15 @@ int main(int argc,char*argv[]){
         uint16_t pkt_len(ntohs(ip_hdr->ip_len));
         pkt_len-=IP_HL(ip_hdr)<<2;
 
-        cout<<src<<" > "<<dst<<endl;
-
         switch(ip_hdr->ip_p){
         case 0x01:{
             sniff_icmp*icmp_hdr=(sniff_icmp*)packet;
             packet+=sizeof(icmp_hdr);
 
-            cout<<"ICMP"<<endl;
-            cout<<"type: "<<dec<<(int)icmp_hdr->icmp_type<<endl;
+            cout<<"Transport type: ICMP"<<endl;
+            cout<<"Source IP: "<<src<<endl;
+            cout<<"Destination IP: "<<dst<<endl;
+            cout<<"ICMP type value: "<<dec<<icmp_hdr->icmp_type<<endl;
             break;
         }case 0x06:{
             sniff_tcp*tcp_hdr=(sniff_tcp*)packet;
@@ -125,11 +125,16 @@ int main(int argc,char*argv[]){
             uint16_t sport=ntohs(tcp_hdr->th_sport);
             uint16_t dport=ntohs(tcp_hdr->th_dport);
 
-            cout<<"TCP"<<endl;
-            cout<<dec<<sport<<' '<<dport<<endl;
-
             uint8_t*payload=(uint8_t*)packet;
-            cout<<"payload length: "<<pkt_len<<endl;
+            cout<<"Transport type: TCP"<<endl;
+            cout<<"Source IP: "<<src<<endl;
+            cout<<"Destination IP: "<<dst<<endl;
+            cout<<"Source Port: "<<sport<<endl;
+            cout<<"Destination Port: "<<dport<<endl;
+            cout<<"Payload: ";
+            for(int i=0;i<min((uint16_t)16,pkt_len);++i)
+                cout<<hex<<(int)payload[i]<<' ';
+            cout<<endl;
             break;
         }case 0x11:{
             sniff_udp*udp_hdr=(sniff_udp*)packet;
@@ -138,20 +143,23 @@ int main(int argc,char*argv[]){
             uint16_t sport=ntohs(udp_hdr->uh_sport);
             uint16_t dport=ntohs(udp_hdr->uh_dport);
 
-            cout<<"UDP"<<endl;
-            cout<<dec<<sport<<' '<<dport<<endl;
-
             uint8_t*payload=(uint8_t*)packet;
-            cout<<"payload length: "<<pkt_len<<endl;
+            cout<<"Transport type: UDP"<<endl;
+            cout<<"Source IP: "<<src<<endl;
+            cout<<"Destination IP: "<<dst<<endl;
+            cout<<"Source Port: "<<sport<<endl;
+            cout<<"Destination Port: "<<dport<<endl;
+            cout<<"Payload: ";
+            for(int i=0;i<min((uint16_t)16,pkt_len);++i)
+                cout<<hex<<setfill('0')<<setw(2)<<(int)payload[i]<<' ';
+            cout<<endl;
             break;
         }default:{
             cout<<"Not implemented protocol"<<endl;
         }
         }
-        cout<<"==================="<<endl;
+        cout<<endl;
     }
-
     pcap_close(handle);
-
     return 0;
 }
