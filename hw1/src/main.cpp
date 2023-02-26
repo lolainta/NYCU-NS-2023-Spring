@@ -129,8 +129,8 @@ int main(int argc,char*argv[]){
             cout<<"Transport type: TCP"<<endl;
             cout<<"Source IP: "<<src<<endl;
             cout<<"Destination IP: "<<dst<<endl;
-            cout<<"Source Port: "<<sport<<endl;
-            cout<<"Destination Port: "<<dport<<endl;
+            cout<<"Source Port: "<<dec<<sport<<endl;
+            cout<<"Destination Port: "<<dec<<dport<<endl;
             cout<<"Payload: ";
             for(int i=0;i<min((uint16_t)16,pkt_len);++i)
                 cout<<hex<<(int)payload[i]<<' ';
@@ -147,8 +147,8 @@ int main(int argc,char*argv[]){
             cout<<"Transport type: UDP"<<endl;
             cout<<"Source IP: "<<src<<endl;
             cout<<"Destination IP: "<<dst<<endl;
-            cout<<"Source Port: "<<sport<<endl;
-            cout<<"Destination Port: "<<dport<<endl;
+            cout<<"Source Port: "<<dec<<sport<<endl;
+            cout<<"Destination Port: "<<dec<<dport<<endl;
             cout<<"Payload: ";
             for(int i=0;i<min((uint16_t)16,pkt_len);++i)
                 cout<<hex<<setfill('0')<<setw(2)<<(int)payload[i]<<' ';
