@@ -118,10 +118,21 @@ int main(int argc,char*argv[]){
         }case 0x06:{
             sniff_tcp*tcp_hdr=(sniff_tcp*)packet;
             packet+=TH_OFF(tcp_hdr)<<2;
+            uint8_t*payload=(uint8_t*)packet;
             cout<<"TCP"<<endl;
+            uint16_t sport=ntohs(tcp_hdr->th_sport);
+            uint16_t dport=ntohs(tcp_hdr->th_dport);
+            cout<<dec<<sport<<' '<<dport<<endl;
             break;
         }case 0x11:{
+            sniff_udp*udp_hdr=(sniff_udp*)packet;
+            packet+=sizeof(udp_hdr);
+            uint8_t*payload=(uint8_t*)packet;
+            uint16_t sport=ntohs(udp_hdr->uh_sport);
+            uint16_t dport=ntohs(udp_hdr->uh_dport);
             cout<<"UDP"<<endl;
+            cout<<dec<<sport<<' '<<dport<<endl;
+
             break;
         }default:{
             cout<<"Not implemented protocol"<<endl;

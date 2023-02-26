@@ -29,7 +29,6 @@ struct sniff_ip {
 #define IP_V(ip)        (((ip)->ip_vhl) >> 4)
 
 /* ICMP header */
-
 struct sniff_icmp {
     u_char icmp_type;
     u_char icmp_code;
@@ -60,4 +59,12 @@ struct sniff_tcp {
     u_short th_win;     /* window */
     u_short th_sum;     /* checksum */
     u_short th_urp;     /* urgent pointer */
+};
+
+/* UDP header */
+struct sniff_udp {
+    u_short uh_sport;
+    u_short uh_dport;
+    u_short uh_len;
+    u_short uh_sum;
 };
