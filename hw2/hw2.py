@@ -107,11 +107,13 @@ class switch:
 
     def send(self, idx, tp, port=-1, **kwargs):  # send to the specified port
         if idx == -1:
-            # print(f'{self.name} flood except {port}')
+            print(f'{self.name} flood except {port}')
             ret = [x for x in [nei.handle_packet(self, tp, **kwargs)
                    for pt, nei in enumerate(self.port_to) if pt != port] if x is not None]
-            # print(ret)
-            return ret
+            print(ret)
+            assert len(
+                ret) < 2, f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)'
+            return ret[0] if ret else None
         else:
             node = self.port_to[idx]
             return node.handle_packet(self, tp, **kwargs)
@@ -124,21 +126,13 @@ class switch:
         match tp:
             case Pkt.ARP:
                 target_ip = kwargs['target_ip']
-                # self.show_table()
-                ret = None
-                for pt in range(len(self.port_to)):
-                    if pt != port:
-                        ans = self.send(pt, tp, src_mac=src_mac,
-                                        target_ip=target_ip)
-                        self.update_mac(ans, pt)
-                        if ans is not None:
-                            assert ret is None
-                            ret = ans
+                ret = self.send(-1, tp, port, src_mac=src_mac,
+                                target_ip=target_ip)
                 return ret
             case Pkt.ICMP:
                 dst_mac = kwargs['dst_mac']
                 dst_port = self.get_port(dst_mac)
-                pong = self.send(dst_port, tp, port=port, ** kwargs)
+                pong = self.send(dst_port, tp, port=port, **kwargs)
                 print(f'{pong=}')
                 if pong:
                     self.update_mac(pong[0], dst_port)
