@@ -23,7 +23,7 @@ class host:
 
     def show_table(self) -> None:
         # display ARP table entries for this host
-        print(f'ip: mac ----------- {self.name} ARP table:')
+        print(f'----------- {self.name}:')
         for k, v in self.arp_table.items():
             print(f'{k}: {v}')
 
@@ -107,7 +107,7 @@ class switch:
 
     def show_table(self) -> None:
         # display MAC table entries for this switc
-        print(f'mac: port ----------- {self.name} MAC table:')
+        print(f'----------- {self.name}:')
         for k, v in self.mac_table.items():
             print(f'{k}: {v}')
 
@@ -127,10 +127,15 @@ class switch:
                 print(f'{self.name} flood except {port}')
             ret = [(pt, mac) for pt, mac in [(pt, nei.handle_packet(self, tp, **kwargs))
                                              for pt, nei in enumerate(self.port_to) if pt != port] if mac is not None]
-            assert len(
-                ret) < 2, f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)'
-            for pt, mac in ret:
-                self.update_mac(mac, pt)
+            assert len(ret) < 2, (
+                f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)')
+            print(f'{self.name}: {ret=}')
+            if tp == Pkt.ARP:
+                for pt, mac in ret:
+                    self.update_mac(mac, pt)
+            elif tp == Pkt.ICMP:
+                for pt, pong in ret:
+                    self.update_mac(pong[0], pt)
             return ret[0][1] if ret else None
         else:
             node = self.port_to[idx]
@@ -153,13 +158,16 @@ class switch:
         elif tp == Pkt.ICMP:
             dst_mac = kwargs['dst_mac']
             dst_port = self.get_port(dst_mac)
+            if dst_port == port:
+                print(f'{self.name} drop same port {tp=} packet {port}')
+                return None
             if verbose:
-                print(f'{self.name} {dst_mac} {dst_port}')
+                print(f'{self.name} {dst_mac=} {dst_port=}')
             pong = self.send(dst_port, tp, port=port, **kwargs)
             if verbose:
                 print(f'{pong=}')
             if pong:
-                self.update_mac(pong[0], dst_port)
+                # self.update_mac(pong[0], dst_port)
                 return pong
             return None
             # case _:
@@ -228,13 +236,19 @@ def run_net():
                 assert len(cmd) == (2), (
                     f'usage: {cmd[0]} <target|all_hosts|all_switches>')
                 if cmd[1] == "all_hosts":
+                    print(f'ip: mac')
                     for hs in host_dict.values():
                         hs.show_table()
                 elif cmd[1] == 'all_switches':
+                    print(f'mac: port')
                     for sw in switch_dict.values():
                         sw.show_table()
                 else:
                     node = get_obj(cmd[1])
+                    if isinstance(node, switch):
+                        print(f'mac: port')
+                    elif isinstance(node, host):
+                        print(f'ip: mac')
                     node.show_table()
             elif cmd[0] == "clear":
                 if len(cmd) != 2:
