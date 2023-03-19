@@ -2,6 +2,8 @@ from setting import get_hosts, get_switches, get_links, get_ip, get_mac
 from enum import Enum
 import traceback
 
+verbose = False
+
 
 class Pkt(Enum):
     ICMP = 1
@@ -35,7 +37,8 @@ class host:
             self.arp_table[ip] = mac
 
     def handle_packet(self, peer, tp: Pkt, **kwargs):  # handle incoming packets
-        print(f'{self.name} got {tp}')
+        if verbose:
+            print(f'{self.name} got {tp}')
         match tp:
             case Pkt.ICMP:
                 src_mac = kwargs['src_mac']
@@ -45,12 +48,14 @@ class host:
                 dst_mac = kwargs['dst_mac']
                 if dst_ip == self.ip and dst_mac == self.mac:
                     return (self.mac, self.ip)
-                print(f"{self.name} discard {tp}")
+                if verbose:
+                    print(f"{self.name} discard {tp}")
                 return None
             case Pkt.ARP:
                 target_ip = kwargs['target_ip']
                 if target_ip == self.ip:
-                    print(f'{self.name} reply arp')
+                    if verbose:
+                        print(f'{self.name} reply arp')
                     return self.mac
                 else:
                     return None
@@ -59,10 +64,12 @@ class host:
 
     def get_mac(self, dst_ip):
         if dst_ip in self.arp_table:
-            print(f'{self.name} Found MAC addr in arp table')
+            if verbose:
+                print(f'{self.name} Found MAC addr in arp table')
             return self.arp_table[dst_ip]
         else:
-            print(f'{self.name} Cannot find MAC addr in arp table')
+            if verbose:
+                print(f'{self.name} Cannot find MAC addr in arp table')
             node = self.port_to
             mac = node.handle_packet(
                 self, Pkt.ARP, src_mac=self.mac, target_ip=dst_ip)
@@ -70,12 +77,15 @@ class host:
             return mac
 
     def ping(self, dst_ip):
-        print(f'{self.name} ping {dst_ip}')
+        if verbose:
+            print(f'{self.name} ping {dst_ip}')
         dst_mac = self.get_mac(dst_ip)
-        print(f'Got {dst_mac=}')
+        if verbose:
+            print(f'Got {dst_mac=}')
 
         pong = self.send(Pkt.ICMP, dst_ip, dst_mac)
-        print(pong)
+        if verbose:
+            print(pong)
 
     def send(self, tp, dst_ip, dst_mac):
         node = self.port_to
@@ -110,7 +120,8 @@ class switch:
 
     def send(self, idx, tp, port=-1, **kwargs):  # send to the specified port
         if idx == -1:
-            print(f'{self.name} flood except {port}')
+            if verbose:
+                print(f'{self.name} flood except {port}')
             ret = [(pt, mac) for pt, mac in [(pt, nei.handle_packet(self, tp, **kwargs))
                                              for pt, nei in enumerate(self.port_to) if pt != port] if mac is not None]
             assert len(
@@ -123,7 +134,8 @@ class switch:
             return node.handle_packet(self, tp, **kwargs)
 
     def handle_packet(self, peer, tp: Pkt, **kwargs):
-        print(f'{self.name} got {tp}')
+        if verbose:
+            print(f'{self.name} got {tp}')
         port = self.port_to.index(peer)
         src_mac = kwargs['src_mac']
         self.update_mac(src_mac, port)
@@ -136,9 +148,11 @@ class switch:
             case Pkt.ICMP:
                 dst_mac = kwargs['dst_mac']
                 dst_port = self.get_port(dst_mac)
-                print(f'{self.name} {dst_mac} {dst_port}')
+                if verbose:
+                    print(f'{self.name} {dst_mac} {dst_port}')
                 pong = self.send(dst_port, tp, port=port, **kwargs)
-                print(f'{pong=}')
+                if verbose:
+                    print(f'{pong=}')
                 if pong:
                     self.update_mac(pong[0], dst_port)
                     return pong
