@@ -129,7 +129,8 @@ class switch:
                                              for pt, nei in enumerate(self.port_to) if pt != port] if mac is not None]
             assert len(ret) < 2, (
                 f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)')
-            print(f'{self.name}: {ret=}')
+            if verbose:
+                print(f'{self.name}: {ret=}')
             if tp == Pkt.ARP:
                 for pt, mac in ret:
                     self.update_mac(mac, pt)
