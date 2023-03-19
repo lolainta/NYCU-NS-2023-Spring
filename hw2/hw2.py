@@ -39,28 +39,31 @@ class host:
     def handle_packet(self, peer, tp: Pkt, **kwargs):  # handle incoming packets
         if verbose:
             print(f'{self.name} got {tp}')
-        match tp:
-            case Pkt.ICMP:
-                src_mac = kwargs['src_mac']
-                src_ip = kwargs['src_ip']
-                self.update_arp(src_ip, src_mac)
-                dst_ip = kwargs['dst_ip']
-                dst_mac = kwargs['dst_mac']
-                if dst_ip == self.ip and dst_mac == self.mac:
-                    return (self.mac, self.ip)
+        # match tp:
+            # case Pkt.ICMP:
+        if tp == Pkt.ICMP:
+            src_mac = kwargs['src_mac']
+            src_ip = kwargs['src_ip']
+            self.update_arp(src_ip, src_mac)
+            dst_ip = kwargs['dst_ip']
+            dst_mac = kwargs['dst_mac']
+            if dst_ip == self.ip and dst_mac == self.mac:
+                return (self.mac, self.ip)
+            if verbose:
+                print(f"{self.name} discard {tp}")
+            return None
+            # case Pkt.ARP:
+        elif tp == Pkt.ARP:
+            target_ip = kwargs['target_ip']
+            if target_ip == self.ip:
                 if verbose:
-                    print(f"{self.name} discard {tp}")
+                    print(f'{self.name} reply arp')
+                return self.mac
+            else:
                 return None
-            case Pkt.ARP:
-                target_ip = kwargs['target_ip']
-                if target_ip == self.ip:
-                    if verbose:
-                        print(f'{self.name} reply arp')
-                    return self.mac
-                else:
-                    return None
-            case _:
-                raise Exception("Unknown packet type")
+            # case _:
+        else:
+            raise Exception("Unknown packet type")
 
     def get_mac(self, dst_ip):
         if dst_ip in self.arp_table:
@@ -139,26 +142,29 @@ class switch:
         port = self.port_to.index(peer)
         src_mac = kwargs['src_mac']
         self.update_mac(src_mac, port)
-        match tp:
-            case Pkt.ARP:
-                target_ip = kwargs['target_ip']
-                ret = self.send(-1, tp, port, src_mac=src_mac,
-                                target_ip=target_ip)
-                return ret
-            case Pkt.ICMP:
-                dst_mac = kwargs['dst_mac']
-                dst_port = self.get_port(dst_mac)
-                if verbose:
-                    print(f'{self.name} {dst_mac} {dst_port}')
-                pong = self.send(dst_port, tp, port=port, **kwargs)
-                if verbose:
-                    print(f'{pong=}')
-                if pong:
-                    self.update_mac(pong[0], dst_port)
-                    return pong
-                return None
-            case _:
-                raise Exception("Unknown packet type")
+        # match tp:
+        #     case Pkt.ARP:
+        if tp == Pkt.ARP:
+            target_ip = kwargs['target_ip']
+            ret = self.send(-1, tp, port, src_mac=src_mac,
+                            target_ip=target_ip)
+            return ret
+            # case Pkt.ICMP:
+        elif tp == Pkt.ICMP:
+            dst_mac = kwargs['dst_mac']
+            dst_port = self.get_port(dst_mac)
+            if verbose:
+                print(f'{self.name} {dst_mac} {dst_port}')
+            pong = self.send(dst_port, tp, port=port, **kwargs)
+            if verbose:
+                print(f'{pong=}')
+            if pong:
+                self.update_mac(pong[0], dst_port)
+                return pong
+            return None
+            # case _:
+        else:
+            raise Exception("Unknown packet type")
 
     def get_port(self, mac):
         if mac in self.mac_table:
