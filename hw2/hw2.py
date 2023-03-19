@@ -14,15 +14,17 @@ class host:
         self.name = name
         self.ip = ip
         self.mac = mac
-        self.port_to = None
-        self.arp_table = dict()  # maps IP addresses to MAC addresses
+        self.port_to: switch | None = None
+        self.arp_table: dict = dict()  # maps IP addresses to MAC addresses
 
-    def add(self, node):
+    def add(self, node) -> None:
         self.port_to = node
 
     def show_table(self):
         # display ARP table entries for this host
-        print(self.arp_table)
+        print(f'{self.name} ARP table')
+        for k, v in self.arp_table.items():
+            print(k, v)
 
     def clear(self):
         # clear ARP table entries for this host
@@ -33,15 +35,16 @@ class host:
         if mac is not None:
             self.arp_table[ip] = mac
 
-    def handle_packet(self, peer, tp, src, dst):  # handle incoming packets
-        print(f'{self.name} got {tp} {src.name=} {dst=}')
+    def handle_packet(self, peer, tp: Pkt, **kwargs):  # handle incoming packets
+        print(f'{self.name} got {tp}')
         match tp:
             case Pkt.PING:
                 raise Exception("Not implemented yet")
             case Pkt.PONG:
                 raise Exception("Not implemented yet")
             case Pkt.ARP:
-                if dst == self.ip:
+                target_ip = kwargs['target_ip']
+                if target_ip == self.ip:
                     print(f'{self.name} reply arp')
                     return self.mac
                 else:
@@ -56,7 +59,8 @@ class host:
         else:
             print(f'{self.name} Cannot find MAC addr in arp table')
             node = self.port_to
-            mac = node.handle_packet(self, Pkt.ARP, self, dst_ip)
+            mac = node.handle_packet(
+                self, Pkt.ARP, src_mac=self.mac, target_ip=dst_ip)
             self.update_arp(dst_ip, mac)
             return mac
 
@@ -64,11 +68,15 @@ class host:
         print(f'{self.name} ping {dst_ip}')
         dst_mac = self.get_mac(dst_ip)
         print(f'Got {dst_mac=}')
-        raise Exception("Not implemented yet")
 
-    # def send(self, ...):
-    #     node = self.port_to  # get node connected to this host
-    #     node.handle_packet(...)  # send packet to the connected node
+        pong = self.send(Pkt.PING, dst_ip, dst_mac)
+        # node = self.port_to
+        # pong = node.handle_packet(self, Pkt.PING, self.mac, dst_mac)
+        print(pong)
+
+    def send(self, tp, dst_ip, dst_mac):
+        node = self.port_to
+        return node.handle_packet(self, tp, self.mac, dst_mac)
 
 
 class switch:
@@ -85,7 +93,7 @@ class switch:
         # display MAC table entries for this switc
         print(f'{self.name} mac table')
         for k, v in self.mac_table.items():
-            print(k.mac, v)
+            print(k, v)
 
     def clear(self):
         # clear MAC table entries for this switch
@@ -102,18 +110,20 @@ class switch:
         node.handle_packet(...) 
     """
 
-    def handle_packet(self, peer, tp, src, dst):  # handle incoming packets
+    def handle_packet(self, peer, tp: Pkt, **kwargs):
         port = self.port_to.index(peer)
-        print(f'{self.name} got {tp} {src.name=} {dst=}')
+        print(f'{self.name} got {tp}')
         match tp:
             case Pkt.ARP:
-                if isinstance(src, host):
-                    self.update_mac(src, port)
+                src_mac = kwargs['src_mac']
+                target_ip = kwargs['target_ip']
+                self.update_mac(src_mac, port)
                 # self.show_table()
                 ret = None
                 for pt, nei in enumerate(self.port_to):
                     if pt != port:
-                        ans = nei.handle_packet(self, tp, src, dst)
+                        ans = nei.handle_packet(
+                            self, tp, src_mac=src_mac, target_ip=target_ip)
                         self.update_mac(ans, pt)
                         if ans is not None:
                             assert ret is None
@@ -179,8 +189,8 @@ def ping(tmp1, tmp2):  # initiate a ping between two hosts
         # invalid command
 
 
-def show_table(tmp):  # display the ARP or MAC table of a node
-    # ...
+def show_table(node: host | switch):  # display the ARP or MAC table of a node
+    node.show_table()
     pass
 
 
@@ -203,14 +213,17 @@ def run_net():
                     continue
                 src.ping(dst.ip)
             elif cmd[0] == "show_table":
-                show_table(cmd[1])
+                node = get_obj(cmd[1])
+                show_table(node)
                 print(cmd, "show table not implemeted")
             elif cmd[0] == "clear":
                 clear()
             else:
                 print("Unknown command!")
+        except AssertionError as e:
+            print("ERROR:", e)
         except Exception as e:
-            print("ERROR: ", type(e), e)
+            print("ERROR:", type(e), e)
             traceback.print_exc()
 
 
