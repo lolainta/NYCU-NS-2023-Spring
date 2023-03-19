@@ -1,5 +1,6 @@
 from setting import get_hosts, get_switches, get_links, get_ip, get_mac
 from enum import Enum
+import traceback
 
 
 class Pkt(Enum):
@@ -32,24 +33,21 @@ class host:
         if mac is not None:
             self.arp_table[ip] = mac
 
-    def handle_packet(self, tp, src, dst):  # handle incoming packets
-        print(f'{self.name} got packet {tp} {src.name} {dst.name=}')
+    def handle_packet(self, peer, tp, src, dst):  # handle incoming packets
+        print(f'{self.name} got {tp} {src.name=} {dst=}')
         match tp:
             case Pkt.PING:
-                raise "Not implemented yet"
-                return None
+                raise Exception("Not implemented yet")
             case Pkt.PONG:
-                raise "Not implemented yet"
-                return None
+                raise Exception("Not implemented yet")
             case Pkt.ARP:
                 if dst == self.ip:
+                    print(f'{self.name} reply arp')
                     return self.mac
                 else:
                     return None
             case _:
-                raise "Unknown packet type"
-                print(f'Unknown packet type')
-                pass
+                raise Exception("Unknown packet type")
 
     def get_mac(self, dst_ip):
         if dst_ip in self.arp_table:
@@ -58,26 +56,19 @@ class host:
         else:
             print(f'{self.name} Cannot find MAC addr in arp table')
             node = self.port_to
-            mac = node.handle_packet(Pkt.ARP, self, dst_ip)
+            mac = node.handle_packet(self, Pkt.ARP, self, dst_ip)
             self.update_arp(dst_ip, mac)
             return mac
 
-
-#    def ping(self, dst_ip, ...): # handle a ping request
-
-
     def ping(self, dst_ip):
         print(f'{self.name} ping {dst_ip}')
-        # ...
         dst_mac = self.get_mac(dst_ip)
-        print(f'Got {dst_arp=}')
-        raise "Not implemented yet"
-        exit()
-    """
-    def send(self, ...):
-        node = self.port_to # get node connected to this host
-        node.handle_packet(...) # send packet to the connected node
-    """
+        print(f'Got {dst_mac=}')
+        raise Exception("Not implemented yet")
+
+    # def send(self, ...):
+    #     node = self.port_to  # get node connected to this host
+    #     node.handle_packet(...)  # send packet to the connected node
 
 
 class switch:
@@ -91,8 +82,10 @@ class switch:
         self.port_to.append(node)
 
     def show_table(self):
-        # display MAC table entries for this switch
-        print(self.mac_table)
+        # display MAC table entries for this switc
+        print(f'{self.name} mac table')
+        for k, v in self.mac_table.items():
+            print(k.mac, v)
 
     def clear(self):
         # clear MAC table entries for this switch
@@ -101,6 +94,7 @@ class switch:
     def update_mac(self, mac, port):
         # update MAC table with a new entry
         if mac is not None:
+            assert mac not in self.mac_table or self.mac_table[mac] == port
             self.mac_table[mac] = port
     """
     def send(self, idx, ...): # send to the specified port
@@ -108,20 +102,29 @@ class switch:
         node.handle_packet(...) 
     """
 
-    def handle_packet(self, tp, src, dst):  # handle incoming packets
-        print(f'{self.name} got {tp=} {src.name=} {dst}')
+    def handle_packet(self, peer, tp, src, dst):  # handle incoming packets
+        port = self.port_to.index(peer)
+        print(f'{self.name} got {tp} {src.name=} {dst=}')
         match tp:
             case Pkt.ARP:
+                if isinstance(src, host):
+                    self.update_mac(src, port)
+                # self.show_table()
+                ret = None
                 for pt, nei in enumerate(self.port_to):
-                    ret = nei.handle_packet(tp, dst)
-                    self.update_mac(ret, pt)
+                    if pt != port:
+                        ans = nei.handle_packet(self, tp, src, dst)
+                        self.update_mac(ans, pt)
+                        if ans is not None:
+                            assert ret is None
+                            ret = ans
+                return ret
             case Pkt.PING:
-                raise "Not implemented yet"
+                raise Exception("Not implemented yet")
             case Pkt.PONG:
-                raise "Not implemented yet"
+                raise Exception("Not implemented yet")
             case _:
-                raise "Not implemented yet"
-                assert False, 'Unknown packet'
+                raise Exception("Not implemented yet")
 
 
 def get_obj(obj):
@@ -208,6 +211,7 @@ def run_net():
                 print("Unknown command!")
         except Exception as e:
             print("ERROR: ", type(e), e)
+            traceback.print_exc()
 
 
 def main():
