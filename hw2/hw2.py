@@ -4,9 +4,8 @@ import traceback
 
 
 class Pkt(Enum):
-    PING = 1
-    PONG = 2
-    ARP = 3
+    ICMP = 1
+    ARP = 2
 
 
 class host:
@@ -20,17 +19,17 @@ class host:
     def add(self, node) -> None:
         self.port_to = node
 
-    def show_table(self):
+    def show_table(self) -> None:
         # display ARP table entries for this host
-        print(f'{self.name} ARP table')
+        print(f'ip: mac ----------- {self.name} ARP table:')
         for k, v in self.arp_table.items():
-            print(k, v)
+            print(f'{k}: {v}')
 
-    def clear(self):
+    def clear(self) -> None:
         # clear ARP table entries for this host
         self.arp_table.clear()
 
-    def update_arp(self, ip, mac):
+    def update_arp(self, ip, mac) -> None:
         # update ARP table with a new entry
         if mac is not None:
             self.arp_table[ip] = mac
@@ -38,10 +37,13 @@ class host:
     def handle_packet(self, peer, tp: Pkt, **kwargs):  # handle incoming packets
         print(f'{self.name} got {tp}')
         match tp:
-            case Pkt.PING:
-                raise Exception("Not implemented yet")
-            case Pkt.PONG:
-                raise Exception("Not implemented yet")
+            case Pkt.ICMP:
+                dst_ip = kwargs['dst_ip']
+                dst_mac = kwargs['dst_mac']
+                if dst_ip == self.ip and dst_mac == self.mac:
+                    return (self.mac, self.ip)
+                print(f"{self.name} discard {tp}")
+                return None
             case Pkt.ARP:
                 target_ip = kwargs['target_ip']
                 if target_ip == self.ip:
@@ -69,14 +71,12 @@ class host:
         dst_mac = self.get_mac(dst_ip)
         print(f'Got {dst_mac=}')
 
-        pong = self.send(Pkt.PING, dst_ip, dst_mac)
-        # node = self.port_to
-        # pong = node.handle_packet(self, Pkt.PING, self.mac, dst_mac)
+        pong = self.send(Pkt.ICMP, dst_ip, dst_mac)
         print(pong)
 
     def send(self, tp, dst_ip, dst_mac):
         node = self.port_to
-        return node.handle_packet(self, tp, self.mac, dst_mac)
+        return node.handle_packet(self, tp, src_ip=self.ip, src_mac=self.mac, dst_ip=dst_ip, dst_mac=dst_mac)
 
 
 class switch:
@@ -86,55 +86,71 @@ class switch:
         self.port_n = port_n  # number of ports on this switch
         self.port_to = list()
 
-    def add(self, node):  # link with other hosts or switches
+    def add(self, node) -> None:  # link with other hosts or switches
         self.port_to.append(node)
 
-    def show_table(self):
+    def show_table(self) -> None:
         # display MAC table entries for this switc
-        print(f'{self.name} mac table')
+        print(f'mac: port ----------- {self.name} MAC table:')
         for k, v in self.mac_table.items():
-            print(k, v)
+            print(f'{k}: {v}')
 
-    def clear(self):
+    def clear(self) -> None:
         # clear MAC table entries for this switch
         self.mac_table.clear()
 
-    def update_mac(self, mac, port):
+    def update_mac(self, mac, port) -> None:
         # update MAC table with a new entry
         if mac is not None:
             assert mac not in self.mac_table or self.mac_table[mac] == port
             self.mac_table[mac] = port
-    """
-    def send(self, idx, ...): # send to the specified port
-        node = self.port_to[idx] 
-        node.handle_packet(...) 
-    """
+
+    def send(self, idx, tp, port=-1, **kwargs):  # send to the specified port
+        if idx == -1:
+            # print(f'{self.name} flood except {port}')
+            ret = [x for x in [nei.handle_packet(self, tp, **kwargs)
+                   for pt, nei in enumerate(self.port_to) if pt != port] if x is not None]
+            # print(ret)
+            return ret
+        else:
+            node = self.port_to[idx]
+            return node.handle_packet(self, tp, **kwargs)
 
     def handle_packet(self, peer, tp: Pkt, **kwargs):
-        port = self.port_to.index(peer)
         print(f'{self.name} got {tp}')
+        port = self.port_to.index(peer)
+        src_mac = kwargs['src_mac']
+        self.update_mac(src_mac, port)
         match tp:
             case Pkt.ARP:
-                src_mac = kwargs['src_mac']
                 target_ip = kwargs['target_ip']
-                self.update_mac(src_mac, port)
                 # self.show_table()
                 ret = None
-                for pt, nei in enumerate(self.port_to):
+                for pt in range(len(self.port_to)):
                     if pt != port:
-                        ans = nei.handle_packet(
-                            self, tp, src_mac=src_mac, target_ip=target_ip)
+                        ans = self.send(pt, tp, src_mac=src_mac,
+                                        target_ip=target_ip)
                         self.update_mac(ans, pt)
                         if ans is not None:
                             assert ret is None
                             ret = ans
                 return ret
-            case Pkt.PING:
-                raise Exception("Not implemented yet")
-            case Pkt.PONG:
-                raise Exception("Not implemented yet")
+            case Pkt.ICMP:
+                dst_mac = kwargs['dst_mac']
+                dst_port = self.get_port(dst_mac)
+                pong = self.send(dst_port, tp, port=port, ** kwargs)
+                print(f'{pong=}')
+                if pong:
+                    self.update_mac(pong[0], dst_port)
+                    return pong
+                return None
             case _:
-                raise Exception("Not implemented yet")
+                raise Exception("Unknown packet type")
+
+    def get_port(self, mac):
+        if mac in self.mac_table:
+            return self.mac_table[mac]
+        return -1
 
 
 def get_obj(obj):
@@ -146,7 +162,7 @@ def get_obj(obj):
     elif obj in switch_dict:
         return switch_dict[obj]
     else:
-        assert False
+        assert False, "get_obj"
 
 
 def add_link(l1, l2):  # create a link between two nodes
@@ -162,8 +178,8 @@ def set_topology():
     ip_dic = get_ip()
     mac_dic = get_mac()
 
-    host_dict = dict()  # maps host names to host objects
-    switch_dict = dict()  # maps switch names to switch objects
+    host_dict = dict()
+    switch_dict = dict()
 
     # ... create nodes and links
     for h in hostlist:
@@ -178,46 +194,34 @@ def set_topology():
         add_link(l1, l2)
 
 
-def ping(tmp1, tmp2):  # initiate a ping between two hosts
-    global host_dict, switch_dict
-    if tmp1 in host_dict and tmp2 in host_dict:
-        node1 = host_dict[tmp1]
-        node2 = host_dict[tmp2]
-        node1.ping(node2.ip)
-    else:
-        pass
-        # invalid command
-
-
-def show_table(node: host | switch):  # display the ARP or MAC table of a node
-    node.show_table()
-    pass
-
-
-def clear():
-    pass
-    # ...
-
-
 def run_net():
-    while (1):
+    while True:
         try:
             command_line = input(">> ")
-            # ... handle user commands
             cmd = command_line.split(' ')
             if len(cmd) == 3 and cmd[1] == "ping":
                 src = get_obj(cmd[0])
                 dst = get_obj(cmd[2])
-                if not isinstance(src, host) or not isinstance(dst, host):
-                    print("No funcitonal ports")
-                    continue
+                assert isinstance(src, host), "No functional ports"
+                assert isinstance(dst, host), "No functional ports"
                 src.ping(dst.ip)
             elif cmd[0] == "show_table":
-                node = get_obj(cmd[1])
-                show_table(node)
-                print(cmd, "show table not implemeted")
+                assert len(cmd) == (2), (
+                    f'usage: {cmd[0]} <target|all_hosts|all_switches>')
+                if cmd[1] == "all_hosts":
+                    for hs in host_dict.values():
+                        hs.clear()
+                elif cmd[1] == 'all_switches':
+                    for sw in switch_dict.values():
+                        sw.clear()
+                else:
+                    node = get_obj(cmd[1])
+                    node.show_table()
             elif cmd[0] == "clear":
-                clear()
+                if len(cmd) != 2:
+                    print('Please specify exactly one target')
+                node = get_obj(cmd[1])
+                node.clear()
             else:
                 print("Unknown command!")
         except AssertionError as e:
