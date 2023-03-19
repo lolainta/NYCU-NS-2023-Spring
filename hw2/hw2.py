@@ -38,6 +38,9 @@ class host:
         print(f'{self.name} got {tp}')
         match tp:
             case Pkt.ICMP:
+                src_mac = kwargs['src_mac']
+                src_ip = kwargs['src_ip']
+                self.update_arp(src_ip, src_mac)
                 dst_ip = kwargs['dst_ip']
                 dst_mac = kwargs['dst_mac']
                 if dst_ip == self.ip and dst_mac == self.mac:
@@ -108,12 +111,13 @@ class switch:
     def send(self, idx, tp, port=-1, **kwargs):  # send to the specified port
         if idx == -1:
             print(f'{self.name} flood except {port}')
-            ret = [x for x in [nei.handle_packet(self, tp, **kwargs)
-                   for pt, nei in enumerate(self.port_to) if pt != port] if x is not None]
-            print(ret)
+            ret = [(pt, mac) for pt, mac in [(pt, nei.handle_packet(self, tp, **kwargs))
+                                             for pt, nei in enumerate(self.port_to) if pt != port] if mac is not None]
             assert len(
                 ret) < 2, f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)'
-            return ret[0] if ret else None
+            for pt, mac in ret:
+                self.update_mac(mac, pt)
+            return ret[0][1] if ret else None
         else:
             node = self.port_to[idx]
             return node.handle_packet(self, tp, **kwargs)
@@ -132,6 +136,7 @@ class switch:
             case Pkt.ICMP:
                 dst_mac = kwargs['dst_mac']
                 dst_port = self.get_port(dst_mac)
+                print(f'{self.name} {dst_mac} {dst_port}')
                 pong = self.send(dst_port, tp, port=port, **kwargs)
                 print(f'{pong=}')
                 if pong:
@@ -204,10 +209,10 @@ def run_net():
                     f'usage: {cmd[0]} <target|all_hosts|all_switches>')
                 if cmd[1] == "all_hosts":
                     for hs in host_dict.values():
-                        hs.clear()
+                        hs.show_table()
                 elif cmd[1] == 'all_switches':
                     for sw in switch_dict.values():
-                        sw.clear()
+                        sw.show_table()
                 else:
                     node = get_obj(cmd[1])
                     node.show_table()
