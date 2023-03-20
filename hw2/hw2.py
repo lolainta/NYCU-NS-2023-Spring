@@ -2,21 +2,43 @@ from setting import get_hosts, get_switches, get_links, get_ip, get_mac
 from enum import Enum
 import traceback
 
-verbose = False
+verbose = True
+
+BROADCAST = 'broadcast'
 
 
-class Pkt(Enum):
-    ICMP = 1
-    ARP = 2
+class Protocol(Enum):
+    PING = 1
+    PONG = 2
+    ARPING = 3
+    ARPONG = 4
+
+
+class Packet:
+    def __init__(self, sender, prot: Protocol) -> None:
+        self.prot = prot
+        self.src_mac = sender.mac
+        if self.prot == Protocol.ARPING:
+            self.dst_mac = BROADCAST
+            self.src_ip = sender.ip
+        elif self.prot in [Protocol.PING, Protocol.PONG]:
+            self.src_ip = sender.ip
 
 
 class host:
-    def __init__(self, name, ip, mac):
+    def __init__(self, name, ip, mac) -> None:
         self.name = name
         self.ip = ip
         self.mac = mac
         self.port_to: switch | None = None
         self.arp_table: dict = dict()  # maps IP addresses to MAC addresses
+
+    def func(name: str, type: int = 1, pet: str = "LoveMe"):
+        if type == 1:
+            print(f"MyPet{pet}")
+        else:
+            print("PetHatesWearingClothes")
+            print()
 
     def add(self, node) -> None:
         self.port_to = node
@@ -36,34 +58,32 @@ class host:
         if mac is not None:
             self.arp_table[ip] = mac
 
-    def handle_packet(self, peer, tp: Pkt, **kwargs):  # handle incoming packets
+    def handle_packet(self, peer, pkt: Packet):  # handle incoming packets
         if verbose:
-            print(f'{self.name} got {tp}')
-        # match tp:
-            # case Pkt.ICMP:
-        if tp == Pkt.ICMP:
-            src_mac = kwargs['src_mac']
-            src_ip = kwargs['src_ip']
-            self.update_arp(src_ip, src_mac)
-            dst_ip = kwargs['dst_ip']
-            dst_mac = kwargs['dst_mac']
-            if dst_ip == self.ip and dst_mac == self.mac:
-                return (self.mac, self.ip)
+            print(f'{self.name} got {pkt.prot} from {pkt.dst_mac}')
+        if pkt.prot == Protocol.ARPING:
+            if pkt.dst_mac == self.mac or pkt.dst_mac == BROADCAST:
+                if pkt.dst_ip == self.ip:
+                    self.update_arp(pkt.src_ip, pkt.src_mac)
+                    arpong = Packet(self, Protocol.ARPONG)
+                    arpong.dst_mac = pkt.src_mac
+                    arpong.src_ip = self.ip
+                    if verbose:
+                        print(f'{self.name} reponse arpong')
+                    self.send(arpong)
+        elif pkt.prot == Protocol.ARPONG:
+            if pkt.dst_mac == self.mac:
+                self.update_arp(pkt.src_ip, pkt.src_mac)
+        elif pkt.prot == Protocol.PING:
+            if pkt.dst_mac == self.mac and pkt.dst_ip == self.ip:
+                pong = Packet(self, Protocol.PONG)
+                pong.dst_ip = pkt.src_ip
+                self.send(pong)
+        elif pkt.prot == Protocol.PONG:
             if verbose:
-                print(f"{self.name} discard {tp}")
-            return None
-            # case Pkt.ARP:
-        elif tp == Pkt.ARP:
-            target_ip = kwargs['target_ip']
-            if target_ip == self.ip:
-                if verbose:
-                    print(f'{self.name} reply arp')
-                return self.mac
-            else:
-                return None
-            # case _:
+                print(f'{self.name} receive pong from {pkt.src_ip}')
         else:
-            raise Exception("Unknown packet type")
+            assert False, "Unknown error"
 
     def get_mac(self, dst_ip):
         if dst_ip in self.arp_table:
@@ -73,26 +93,27 @@ class host:
         else:
             if verbose:
                 print(f'{self.name} Cannot find MAC addr in arp table')
-            node = self.port_to
-            mac = node.handle_packet(
-                self, Pkt.ARP, src_mac=self.mac, target_ip=dst_ip)
-            self.update_arp(dst_ip, mac)
-            return mac
+            arping = Packet(self, Protocol.ARPING)
+            arping.dst_ip = dst_ip
+            self.send(arping)
+            assert dst_ip in self.arp_table, "ARP table not updated"
+            return self.arp_table[dst_ip]
 
     def ping(self, dst_ip):
         if verbose:
             print(f'{self.name} ping {dst_ip}')
-        dst_mac = self.get_mac(dst_ip)
-        if verbose:
-            print(f'Got {dst_mac=}')
+        ping = Packet(self, Protocol.PING)
+        ping.dst_ip = dst_ip
+        self.send(ping)
 
-        pong = self.send(Pkt.ICMP, dst_ip, dst_mac)
-        if verbose:
-            print(pong)
-
-    def send(self, tp, dst_ip, dst_mac):
+    def send(self, pkt: Packet):
+        if pkt.prot in [Protocol.PING, Protocol.PONG]:
+            dst_mac = self.get_mac(pkt.dst_ip)
+            if verbose:
+                print(f'Got {dst_mac=}')
+            pkt.dst_mac = dst_mac
         node = self.port_to
-        return node.handle_packet(self, tp, src_ip=self.ip, src_mac=self.mac, dst_ip=dst_ip, dst_mac=dst_mac)
+        node.handle_packet(self, pkt)
 
 
 class switch:
@@ -118,62 +139,37 @@ class switch:
     def update_mac(self, mac, port) -> None:
         # update MAC table with a new entry
         if mac is not None:
-            assert mac not in self.mac_table or self.mac_table[mac] == port
+            assert mac not in self.mac_table or self.mac_table[
+                mac] == port, f"{self.name} rewrite mac_table {mac}"
             self.mac_table[mac] = port
+            if verbose:
+                print(f'{self.name} recored {mac=} {port=}')
 
-    def send(self, idx, tp, port=-1, **kwargs):  # send to the specified port
+    def send(self, idx, pkt: Packet, port=-1, **kwargs):  # send to the specified port
         if idx == -1:
             if verbose:
-                print(f'{self.name} flood except {port}')
-            ret = [(pt, mac) for pt, mac in [(pt, nei.handle_packet(self, tp, **kwargs))
-                                             for pt, nei in enumerate(self.port_to) if pt != port] if mac is not None]
-            assert len(ret) < 2, (
-                f'Two respone {ret} when flood, (Maybe IP conflict or MAC conflicted)')
-            if verbose:
-                print(f'{self.name}: {ret=}')
-            if tp == Pkt.ARP:
-                for pt, mac in ret:
-                    self.update_mac(mac, pt)
-            elif tp == Pkt.ICMP:
-                for pt, pong in ret:
-                    self.update_mac(pong[0], pt)
-            return ret[0][1] if ret else None
+                print(f'{self.name} flood or broadcast except {port}')
+            assert port != -1, "Cannot flood all port"
+            [nei.handle_packet(self, pkt)
+             for pt, nei in enumerate(self.port_to) if pt != port]
         else:
-            node = self.port_to[idx]
-            return node.handle_packet(self, tp, **kwargs)
+            if idx == port:
+                if verbose:
+                    print(f'Prevent packet reflow!')
+                return
+            else:
+                node = self.port_to[idx]
+                node.handle_packet(self, pkt)
 
-    def handle_packet(self, peer, tp: Pkt, **kwargs):
+    def handle_packet(self, peer, pkt: Packet):
         if verbose:
-            print(f'{self.name} got {tp}')
+            print(f'{self.name} got {pkt.prot}')
         port = self.port_to.index(peer)
-        src_mac = kwargs['src_mac']
-        self.update_mac(src_mac, port)
-        # match tp:
-        #     case Pkt.ARP:
-        if tp == Pkt.ARP:
-            target_ip = kwargs['target_ip']
-            ret = self.send(-1, tp, port, src_mac=src_mac,
-                            target_ip=target_ip)
-            return ret
-            # case Pkt.ICMP:
-        elif tp == Pkt.ICMP:
-            dst_mac = kwargs['dst_mac']
-            dst_port = self.get_port(dst_mac)
-            if dst_port == port:
-                print(f'{self.name} drop same port {tp=} packet {port}')
-                return None
-            if verbose:
-                print(f'{self.name} {dst_mac=} {dst_port=}')
-            pong = self.send(dst_port, tp, port=port, **kwargs)
-            if verbose:
-                print(f'{pong=}')
-            if pong:
-                # self.update_mac(pong[0], dst_port)
-                return pong
-            return None
-            # case _:
+        self.update_mac(pkt.src_mac, port)
+        if pkt.dst_mac == BROADCAST or pkt.dst_mac not in self.mac_table:
+            self.send(-1, pkt, port)
         else:
-            raise Exception("Unknown packet type")
+            self.send(self.mac_table[pkt.dst_mac], pkt, port)
 
     def get_port(self, mac):
         if mac in self.mac_table:
