@@ -19,7 +19,7 @@ class Setting():
         else:
             self.seed = seed  # seed 用於 random，同樣的 seed 會有相同的結果
 
-    # hosts產生封包的時間
+    # hosts 產生封包的時間
     # e.g.
     #   [[10, 20, 30], # host 0
     #    [20, 30, 50], # host 1
