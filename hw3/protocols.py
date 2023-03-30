@@ -219,3 +219,48 @@ def csma(setting: Setting, show_history=False):
         show_log(pkts, history)
 
     return analyse(setting, history)
+
+
+def csma_cd(setting: Setting, show_history=False):
+    pkts = setting.gen_packets()
+    # print(pkts)
+    hosts = [Host(pkt, setting.link_delay) for pkt in pkts]
+    for t in range(setting.total_time):
+        decision(setting, hosts, t)
+        for host in hosts:
+            if host.state == State.STOP:
+                if host.detect == True:
+                    host.state = State.DETECTED
+            elif host.state == State.START:
+                for nei in hosts:
+                    if nei != host:
+                        if nei.delayed_state() in [State.START, State.SEND]:
+                            host.wait = random.randint(
+                                1, setting.max_colision_wait_time)
+                            host.state = State.WAIT
+                            # print(f'{t=} {host=} detected {host.wait=}')
+            elif host.state == State.SEND:
+                for nei in hosts:
+                    if nei != host and nei.delayed_state() in [State.START, State.SEND, State.STOP]:
+                        host.state = State.DETECTED
+                        host.sending = 0
+                        host.detect = False
+                pass
+
+        for host in hosts:
+            if host.state in [State.START, State.SEND, State.STOP]:
+                for nei in hosts:
+                    if nei != host:
+                        nei.detect = True
+
+        # print(f'{t=}', end='\t')
+        for host in hosts:
+            # print(f'{host.state:15}', end='')
+            host.commit()
+        # print()
+
+    history = [host.history for host in hosts]
+    if show_history:
+        show_log(pkts, history)
+
+    return analyse(setting, history)

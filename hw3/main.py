@@ -1,4 +1,4 @@
-from protocols import aloha, slotted_aloha, csma
+from protocols import aloha, slotted_aloha, csma, csma_cd
 from setting import Setting
 
 
@@ -10,7 +10,7 @@ def main():
                    p_resend=0.3,
                    packet_size=3,
                    link_delay=1,
-                   seed=4)
+                   seed=None)
 
     print(f'aloha:')
     success_rate, idle_rate, collision_rate = aloha(conf, True)
@@ -23,6 +23,10 @@ def main():
     print(f'csma:')
     success_rate, idle_rate, collision_rate = csma(conf, True)
     print(f'csma: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print()
+    print(f'csma_cd:')
+    success_rate, idle_rate, collision_rate = csma_cd(conf, True)
+    print(f'csma_cd: {success_rate=}, {idle_rate=}, {collision_rate=}')
 
 
 if __name__ == '__main__':
