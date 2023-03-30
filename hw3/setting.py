@@ -16,19 +16,20 @@ class Setting():
         self.link_delay = link_delay  # link delay
         if seed is None:
             self.seed = random.randint(1, 10000)
+            print(self.seed)
         else:
             self.seed = seed  # seed 用於 random，同樣的 seed 會有相同的結果
-
     # hosts 產生封包的時間
     # e.g.
     #   [[10, 20, 30], # host 0
     #    [20, 30, 50], # host 1
     #    [30, 50, 60]] # host 2
+
     def gen_packets(self):
         random.seed(self.seed)
-        packets = [[] for i in range(self.host_num)]
+        packets = [[]]*self.host_num
         for i in range(self.host_num):
             packets[i] = random.sample(
-                range(1, self.total_time-self.packet_size), self.packet_num)
+                range(1, self.total_time-self.packet_time), self.packet_num)
             packets[i].sort()
         return packets
