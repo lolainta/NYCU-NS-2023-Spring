@@ -6,6 +6,10 @@ import random
 def show_log(pkts, hist):
     print('idx:', end='')
     for i, _ in enumerate(hist[0]):
+        print(f'{i//10}', end='')
+    print()
+    print('idx:', end='')
+    for i, _ in enumerate(hist[0]):
         print(f'{i%10}', end='')
     print()
 
@@ -25,8 +29,9 @@ class State(Enum):
 
 
 class Host():
-    def __init__(self, pkts: list) -> None:
-        self.history = list()
+    def __init__(self, pkts: list, link_delay: int = 0) -> None:
+        self.history: list[str] = list()
+        self.histat: list[State] = list()
         self.state: State = State.IDLE
         self.pkts: list = pkts
         self.queue: int = 0
@@ -34,12 +39,19 @@ class Host():
         self.detect: bool = False
         self.wait: int = 0
         self.finished: int = 0
+        self.delay = link_delay
 
-    def commit(self):
+    def commit(self) -> None:
+        self.histat.append(self.state)
         self.history.append(self._s2s(self.state))
 
+    def delayed_state(self) -> State:
+        if len(self.histat) < self.delay:
+            return State.IDLE
+        return self.histat[-self.delay]
+
     @staticmethod
-    def _s2s(state: State):
+    def _s2s(state: State) -> str:
         if state in [State.IDLE, State.WAIT]:
             return '.'
         elif state == State.START:
@@ -71,7 +83,7 @@ def decision(conf: Setting, hosts: list[Host], t: int):
         if host.state == State.WAIT:
             assert host.queue > 0
             host.wait -= 1
-            if host.wait <= 1:
+            if host.wait == 0:
                 host.state = State.START
                 host.sending = conf.packet_time-1
                 host.detect = False
@@ -105,8 +117,6 @@ def decision(conf: Setting, hosts: list[Host], t: int):
                 host.state = State.IDLE
         else:
             assert False, 'Unknown state'
-
-    pass
 
 
 def aloha(setting: Setting, show_history=False):
@@ -153,7 +163,7 @@ def slotted_aloha(setting: Setting, show_history=False):
             elif host.state == State.START:
                 if t % setting.packet_time != 0:
                     host.state = State.WAIT
-                    host.wait = (setting.packet_time-1-t) % setting.packet_time
+                    host.wait = (setting.packet_time-t) % setting.packet_time
 
         for host in hosts:
             if host.state in [State.START, State.SEND, State.STOP]:
@@ -176,26 +186,28 @@ def slotted_aloha(setting: Setting, show_history=False):
 def csma(setting: Setting, show_history=False):
     pkts = setting.gen_packets()
     # print(pkts)
-    hosts = [Host(pkt) for pkt in pkts]
+    hosts = [Host(pkt, setting.link_delay) for pkt in pkts]
     for t in range(setting.total_time):
         decision(setting, hosts, t)
-
         for host in hosts:
             if host.state == State.STOP:
                 if host.detect == True:
                     host.state = State.DETECTED
             elif host.state == State.START:
-                if t % setting.packet_time == 0:
-                    pass
-                else:
-                    host.state = State.WAIT
-                    host.wait = (setting.packet_time-1-t) % setting.packet_time
+                for nei in hosts:
+                    if nei != host:
+                        if nei.delayed_state() in [State.START, State.SEND]:
+                            host.wait = random.randint(
+                                1, setting.max_colision_wait_time)
+                            host.state = State.WAIT
+                            # print(f'{t=} {host=} detected {host.wait=}')
 
         for host in hosts:
             if host.state in [State.START, State.SEND, State.STOP]:
                 for nei in hosts:
                     if nei != host:
                         nei.detect = True
+
         # print(f'{t=}', end='\t')
         for host in hosts:
             # print(f'{host.state:15}', end='')
