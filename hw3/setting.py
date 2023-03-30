@@ -16,7 +16,7 @@ class Setting():
         self.link_delay = link_delay  # link delay
         if seed is None:
             self.seed = random.randint(1, 10000)
-            print(self.seed)
+            print(f'Use randomn seed {self.seed}')
         else:
             self.seed = seed  # seed 用於 random，同樣的 seed 會有相同的結果
     # hosts 產生封包的時間

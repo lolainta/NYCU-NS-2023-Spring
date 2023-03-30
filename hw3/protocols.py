@@ -2,16 +2,19 @@ from setting import Setting
 from enum import Enum, auto
 import random
 
+DEBUG = False
+
 
 def show_log(pkts, hist):
-    print('idx:', end='')
-    for i, _ in enumerate(hist[0]):
-        print(f'{i//10}', end='')
-    print()
-    print('idx:', end='')
-    for i, _ in enumerate(hist[0]):
-        print(f'{i%10}', end='')
-    print()
+    if DEBUG:
+        print('idx:', end='')
+        for i, _ in enumerate(hist[0]):
+            print(f'{i//10}', end='')
+        print()
+        print('idx:', end='')
+        for i, _ in enumerate(hist[0]):
+            print(f'{i%10}', end='')
+        print()
 
     for idx, h in enumerate(hist):
         print(f'h{idx}:', ''.join(['V' if t in pkts[idx] else ' '
