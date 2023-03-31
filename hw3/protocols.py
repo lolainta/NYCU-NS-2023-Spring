@@ -157,7 +157,45 @@ def slotted_aloha(setting: Setting, show_history=False):
     # print(pkts)
     hosts = [Host(pkt) for pkt in pkts]
     for t in range(setting.total_time):
-        decision(setting, hosts, t)
+        for host in hosts:
+            if t in host.pkts:
+                host.queue += 1
+            if host.state == State.WAIT:
+                assert host.queue > 0
+                host.wait -= 1
+                if host.wait == 0:
+                    host.state = State.START
+                    host.sending = setting.packet_time-1
+                    host.detect = False
+            elif host.state == State.IDLE:
+                if host.queue > 0:
+                    host.state = State.START
+                    host.sending = setting.packet_time-1
+                    host.detect = False
+            elif host.state == State.START:
+                host.state = State.SEND
+            elif host.state == State.SEND:
+                host.sending -= 1
+                if host.sending == 1:
+                    host.state = State.STOP
+            elif host.state == State.DETECTED:
+                host.wait = 0 if random.random() < setting.p_resend else setting.packet_time
+                if host.wait == 0:
+                    host.state = State.START
+                    host.sending = setting.packet_time-1
+                    host.detect = False
+                else:
+                    host.state = State.WAIT
+            elif host.state == State.STOP:
+                host.queue -= 1
+                if host.queue > 0:
+                    host.state = State.START
+                    host.sending = setting.packet_time-1
+                    host.detect = False
+                else:
+                    host.state = State.IDLE
+            else:
+                assert False, 'Unknown state'
 
         for host in hosts:
             if host.state == State.STOP:
