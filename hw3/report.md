@@ -13,11 +13,11 @@
 
 >   Apply the following settings in all methods and plot the results.
 
-![q1_success](./results/q1_success.png)
+![q1_success](./assets/q1_success.png)
 
-![q1_idle](./results/q1_idle.png)
+![q1_idle](./assets/q1_idle.png)
 
-![q1_collision](./results/q1_collision.png)
+![q1_collision](./assets/q1_collision.png)
 
 
 ### Question 2
@@ -36,11 +36,11 @@ We can see that the success rate increases after we defined the expressions in c
 We can also find that the collision rate is lower than before after we defined the expressions for `max_collision_wait_time` and `p_resend`.
 
 
-![q3_success](./results/q3_success.png)
+![q3_success](./assets/q3_success.png)
 
-![q3_idle](./results/q3_idle.png)
+![q3_idle](./assets/q3_idle.png)
 
-![q3_collision](./results/q3_collision.png)
+![q3_collision](./assets/q3_collision.png)
 
 ### Question 4
 
@@ -51,11 +51,11 @@ With the higher coefficient, the success rate will slightly increase. On the oth
 It is obvious that the success rate of CSMA and CSMA/CD is always higher thant ALOHA and Slotted ALOHA.
 
 
-![q4_success](./results/q4_success.png)
+![q4_success](./assets/q4_success.png)
 
-![q4_idle](./results/q4_idle.png)
+![q4_idle](./assets/q4_idle.png)
 
-![q4_collision](./results/q4_collision.png)
+![q4_collision](./assets/q4_collision.png)
 
 ### Question 5
 
@@ -64,11 +64,11 @@ It is obvious that the success rate of CSMA and CSMA/CD is always higher thant A
 The more number of packets each host need to send, the success rate for CSMA and CSMA/CD will increase significant. That is because they don't have enough packet to fill up the total time to send with few packets. Similary, the success rate for ALOHA and Slotted ALOHA will increase, too. However, since they did not do carrier sense, thus they waste their time for idle and collision, that cause the lower success rate.
 
 
-![q5_success](./results/q5_success.png)
+![q5_success](./assets/q5_success.png)
 
-![q5_idle](./results/q5_idle.png)
+![q5_idle](./assets/q5_idle.png)
 
-![q5_collision](./results/q5_collision.png)
+![q5_collision](./assets/q5_collision.png)
 
 ### Question 6
 
@@ -92,11 +92,11 @@ In contrast, ALOHA and Slotted ALOHA won't have significant change.
 The packet size will not have significant effect with ALOHA and Slotted ALOHA. However, the reason why the success rate increase for CSMA and CSMA/CD is that there are not enough packet needed to be transmit for them to fully utilize the channel, it can be proved by it's low collision rate. Moreover, since they do carrier sense before they send the packet, they won't interrupt the host who is already sending the packet. Thus, the longer the packet size is, the higher the utilization of the channel will be since the succussful packets will occupy more time slot if some host had not been curropted for at least the link delay time.
 
 
-![q7_success](./results/q7_success.png)
+![q7_success](./assets/q7_success.png)
 
-![q7_idle](./results/q7_idle.png)
+![q7_idle](./assets/q7_idle.png)
 
-![q7_collision](./results/q7_collision.png)
+![q7_collision](./assets/q7_collision.png)
 
 ### Question 8
 
@@ -107,9 +107,9 @@ Since ALOHA and Slotted ALOHA does not take link delay into consideration, they 
 The higher the link delay is, the lower the success rate will be for CSMA and CSMA/CD, scince they will misdetected whether other host are sending or not while the packet is still flowing on the link with some delay. That is to say, with the higher link delay, their will be higher collision rate. What's more, since all hosts using CSMA/CD will stop sending when detected collision and wait for a period, the idle time will slightly increase for this reason.
 
 
-![q8_success](./results/q8_success.png)
+![q8_success](./assets/q8_success.png)
 
-![q8_idle](./results/q8_idle.png)
+![q8_idle](./assets/q8_idle.png)
 
-![q8_collision](./results/q8_collision.png)
+![q8_collision](./assets/q8_collision.png)
 

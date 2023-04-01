@@ -36,7 +36,7 @@ def main():
 
     # exit(0)
 
-    os.makedirs('results', exist_ok = True)
+    os.makedirs('assets', exist_ok = True)
 
     print('Question 1')
     host_num_list = [2, 3, 4, 6]
@@ -128,7 +128,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_ylabel('Success Rate')
     ax.set_xlabel(influence)
     ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
-    fig.savefig(f'results/{prefix}_success.png')
+    fig.savefig(f'assets/{prefix}_success.png')
 
     # Idle
     ax.cla()
@@ -138,7 +138,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_ylabel('Idle Rate')
     ax.set_xlabel(influence)
     ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
-    fig.savefig(f'results/{prefix}_idle.png')
+    fig.savefig(f'assets/{prefix}_idle.png')
 
     # Collision
     ax.cla()
@@ -148,7 +148,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_ylabel('Collision Rate')
     ax.set_xlabel(influence)
     ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
-    fig.savefig(f'results/{prefix}_collision.png')
+    fig.savefig(f'assets/{prefix}_collision.png')
 
 
 if __name__ == '__main__':
