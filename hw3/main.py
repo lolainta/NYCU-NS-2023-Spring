@@ -17,21 +17,22 @@ def main():
                    seed=SEED)
 
     print('Question 0')
-    print(f'aloha:')
+    print(f'ALOHA:')
     success_rate, idle_rate, collision_rate = aloha(conf, True)
-    print(f'aloha: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print(f'ALOHA: {success_rate=}, {idle_rate=}, {collision_rate=}')
     print()
-    print(f'slotted_aloha:')
+    print(f'Slotted ALOHA:')
     success_rate, idle_rate, collision_rate = slotted_aloha(conf, True)
-    print(f'slotted_aloha: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print(f'Slotted ALOHA: {success_rate=}, {idle_rate=}, {collision_rate=}')
     print()
-    print(f'csma:')
+    print(f'CSMA:')
     success_rate, idle_rate, collision_rate = csma(conf, True)
-    print(f'csma: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print(f'CSMA: {success_rate=}, {idle_rate=}, {collision_rate=}')
     print()
-    print(f'csma_cd:')
+    print(f'CSMA/CD:')
     success_rate, idle_rate, collision_rate = csma_cd(conf, True)
-    print(f'csma_cd: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print(f'CSMA/CD: {success_rate=}, {idle_rate=}, {collision_rate=}')
+    print()
 
     os.makedirs('results', exist_ok = True)
 
@@ -124,7 +125,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Success Rate')
     ax.set_xlabel(influence)
-    ax.legend(['aloha', 'slotted aloha', 'csma', 'csma/cd'])
+    ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
     fig.savefig(f'results/{prefix}_success.png')
 
     # Idle
@@ -134,7 +135,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Idle Rate')
     ax.set_xlabel(influence)
-    ax.legend(['aloha', 'slotted aloha', 'csma', 'csma/cd'])
+    ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
     fig.savefig(f'results/{prefix}_idle.png')
 
     # Collision
@@ -144,7 +145,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Collision Rate')
     ax.set_xlabel(influence)
-    ax.legend(['aloha', 'slotted aloha', 'csma', 'csma/cd'])
+    ax.legend(['ALOHA', 'Slotted ALOHA', 'CSMA', 'CSMA/CD'])
     fig.savefig(f'results/{prefix}_collision.png')
 
 
