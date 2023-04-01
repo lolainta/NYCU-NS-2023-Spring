@@ -55,7 +55,7 @@ def main():
         print(f'{c=}', end='\r')
         conf = Setting(c=c, seed=SEED)
         run(succ, idle, coli, conf)
-    plot(succ, idle, coli, range(1, 31, 1), 'q4', 'Coeficient')
+    plot(succ, idle, coli, range(1, 31, 1), 'q4', 'Coefficient')
 
     print('Question 5')
     succ, idle, coli = [[[] for _ in range(4)] for _ in range(3)]
@@ -117,7 +117,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
 
     # Success
     for i in range(4):
-        ax.plot(x, succ[i])
+        ax.plot(x, succ[i], marker=10)
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Success Rate')
     ax.set_xlabel(influence)
@@ -127,7 +127,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     # Idle
     ax.cla()
     for i in range(4):
-        ax.plot(x, idle[i])
+        ax.plot(x, idle[i], marker=10)
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Idle Rate')
     ax.set_xlabel(influence)
@@ -137,7 +137,7 @@ def plot(succ: list[list], idle: list[list], coli: list[list], x, prefix: str, i
     # Collision
     ax.cla()
     for i in range(4):
-        ax.plot(x, coli[i])
+        ax.plot(x, coli[i], marker=10)
     ax.set_title(f'Infulence of {influence}')
     ax.set_ylabel('Collision Rate')
     ax.set_xlabel(influence)
