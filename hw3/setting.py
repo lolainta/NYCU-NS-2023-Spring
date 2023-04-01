@@ -7,7 +7,7 @@ class Setting():
                  total_time: int = 10000,
                  packet_num: int = 500,
                  packet_size: int = 5,
-                 max_colision_wait_time: None | int = None,
+                 max_collision_wait_time: None | int = None,
                  p_resend: None | float = None,
                  c: int = 8,
                  link_delay: int = 1,
@@ -17,9 +17,9 @@ class Setting():
         self.total_time = total_time
         self.packet_num = packet_num
         self.packet_time = packet_size + 2*link_delay
-        self.max_colision_wait_time = self.packet_time * \
-            c if max_colision_wait_time is None else max_colision_wait_time
-        self.p_resend = 1/c if p_resend is None else p_resend
+        self.max_collision_wait_time = self.host_num * self.packet_time * \
+            c if max_collision_wait_time is None else max_collision_wait_time
+        self.p_resend = 1/c/self.host_num if p_resend is None else p_resend
         self.link_delay = link_delay
         if seed is None:
             self.seed = random.randint(1, 10000)
