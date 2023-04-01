@@ -1,6 +1,7 @@
 from protocols import aloha, slotted_aloha, csma, csma_cd
 from setting import Setting
 import matplotlib.pyplot as plt
+import os
 
 SEED = 4
 
@@ -31,6 +32,8 @@ def main():
     print(f'csma_cd:')
     success_rate, idle_rate, collision_rate = csma_cd(conf, True)
     print(f'csma_cd: {success_rate=}, {idle_rate=}, {collision_rate=}')
+
+    os.makedirs('results', exist_ok = True)
 
     print('Question 1')
     host_num_list = [2, 3, 4, 6]
