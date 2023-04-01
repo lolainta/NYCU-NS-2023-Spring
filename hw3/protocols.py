@@ -49,9 +49,9 @@ class Host():
         self.history.append(self._s2s(self.state))
 
     def delayed_state(self) -> State:
-        if len(self.histat) < self.delay:
+        if len(self.histat) < self.delay+1:
             return State.IDLE
-        return self.histat[-self.delay]
+        return self.histat[-self.delay-1]
 
     @staticmethod
     def _s2s(state: State) -> str:
@@ -103,7 +103,7 @@ def decision(conf: Setting, hosts: list[Host], t: int):
                 host.state = State.STOP
         elif host.state == State.DETECTED:
             host.wait = random.randint(
-                0, conf.max_colision_wait_time)
+                0, conf.max_collision_wait_time)
             if host.wait == 0:
                 host.state = State.START
                 host.sending = conf.packet_time-1
@@ -164,9 +164,13 @@ def slotted_aloha(setting: Setting, show_history=False):
                 assert host.queue > 0
                 host.wait -= 1
                 if host.wait == 0:
-                    host.state = State.START
-                    host.sending = setting.packet_time-1
-                    host.detect = False
+                    host.wait = 0 if random.random() < setting.p_resend else setting.packet_time
+                    if host.wait == 0:
+                        host.state = State.START
+                        host.sending = setting.packet_time-1
+                        host.detect = False
+                    else:
+                        host.state = State.WAIT
             elif host.state == State.IDLE:
                 if host.queue > 0:
                     host.state = State.START
@@ -179,7 +183,8 @@ def slotted_aloha(setting: Setting, show_history=False):
                 if host.sending == 1:
                     host.state = State.STOP
             elif host.state == State.DETECTED:
-                host.wait = 0 if random.random() < setting.p_resend else setting.packet_time
+                r=random.random()
+                host.wait = 0 if r < setting.p_resend else setting.packet_time
                 if host.wait == 0:
                     host.state = State.START
                     host.sending = setting.packet_time-1
@@ -239,7 +244,7 @@ def csma(setting: Setting, show_history=False):
                     if nei != host:
                         if nei.delayed_state() in [State.START, State.SEND]:
                             host.wait = random.randint(
-                                1, setting.max_colision_wait_time)
+                                1, setting.max_collision_wait_time)
                             host.state = State.WAIT
                             # print(f'{t=} {host=} detected {host.wait=}')
 
@@ -277,7 +282,7 @@ def csma_cd(setting: Setting, show_history=False):
                     if nei != host:
                         if nei.delayed_state() in [State.START, State.SEND]:
                             host.wait = random.randint(
-                                1, setting.max_colision_wait_time)
+                                1, setting.max_collision_wait_time)
                             host.state = State.WAIT
                             # print(f'{t=} {host=} detected {host.wait=}')
             elif host.state == State.SEND:

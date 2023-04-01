@@ -10,7 +10,7 @@ def main():
     conf = Setting(host_num=3,
                    total_time=100,
                    packet_num=4,
-                   max_colision_wait_time=20,
+                   max_collision_wait_time=20,
                    p_resend=0.3,
                    packet_size=3,
                    link_delay=1,
@@ -34,6 +34,8 @@ def main():
     print(f'CSMA/CD: {success_rate=}, {idle_rate=}, {collision_rate=}')
     print()
 
+    # exit(0)
+
     os.makedirs('results', exist_ok = True)
 
     print('Question 1')
@@ -42,7 +44,7 @@ def main():
     succ, idle, coli = [[[] for _ in range(4)] for _ in range(3)]
     for h, p in zip(host_num_list, packet_num_list):
         conf = Setting(host_num=h, packet_num=p,
-                       max_colision_wait_time=20, p_resend=0.3, seed=SEED)
+                       max_collision_wait_time=20, p_resend=0.3, seed=SEED)
         run(succ, idle, coli, conf)
     plot(succ, idle, coli, host_num_list, 'q1', 'Host Num')
 
