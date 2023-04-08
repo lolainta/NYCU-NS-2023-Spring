@@ -1,12 +1,43 @@
 from testdata import testdata
+from ans_ospf import ans_ospf
+from ans_rip import ans_rip
+from Router import OSPFRouter
 
 
 def run_ospf(link_cost: list) -> tuple[list, list]:
-    return ([], [])
+    sz = len(link_cost)
+    routers = [OSPFRouter(i, link_cost[i]) for i in range(sz)]
+    hist = list()
+    while any([any([len(ls) == 0 for ls in router.map]) for router in routers]):
+        # print('Round Start')
+        rhist = list()
+        for i in range(sz):
+            roundRouters = [
+                router for router in routers if len(router.map[i]) != 0
+            ]
+            for router in roundRouters:
+                for neid in router.neighbors:
+                    nei = routers[neid]
+                    if len(nei.map[i]) == 0:
+                        nei.map[i] = router.map[i]
+                        rhist.append((router.id, i, nei.id))
+        rhist = sorted(rhist)
+        hist.extend(rhist)
+    return ([routers[i].solve() for i in range(sz)], hist)
 
 
 def run_rip(link_cost: list) -> tuple[list, list]:
     return ([], [])
+
+
+def check(link_cost: list):
+    sz = len(link_cost)
+    for i in range(sz):
+        assert sz == len(
+            link_cost[i]), f'ERROR: Data length invalid {link_cost}'
+        for j in range(sz):
+            assert link_cost[i][j] == link_cost[j][
+                i], f'ERROR: Data not symmetric on [{i}][{j}]'
 
 
 def main():
@@ -75,9 +106,16 @@ def main():
             (5, 2), (5, 4)
         ]
     )
+    assert mini_ospf == run_ospf(mini_data[0]), 'OSPF Failed on mini_data'
+    # assert mini_rip == run_rip(mini_data[0]), 'RIP Failed on mini_data'
+    assert len(testdata) == len(ans_ospf)
+    assert len(testdata) == len(ans_rip)
+    for data, ospf, rip in zip(testdata, ans_ospf, ans_rip):
+        check(data)
+        assert ospf == run_ospf(data), 'OSPF Failed on testdata'
+        # assert rip == run_rip(data), 'RIP Failed on testdata'
 
-    assert mini_ospf == run_ospf(mini_data), 'OSPF Failed on mini_data'
-    assert mini_rip == run_rip(mini_data), 'OSPF Failed on mini_data'
+    print('AC')
 
 
 if __name__ == '__main__':
