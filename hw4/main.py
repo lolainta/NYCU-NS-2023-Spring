@@ -1,7 +1,7 @@
 from testdata import testdata
 from ans_ospf import ans_ospf
 from ans_rip import ans_rip
-from Router import OSPFRouter
+from Router import OSPFRouter, RIPRouter
 
 
 def run_ospf(link_cost: list) -> tuple[list, list]:
@@ -27,7 +27,20 @@ def run_ospf(link_cost: list) -> tuple[list, list]:
 
 
 def run_rip(link_cost: list) -> tuple[list, list]:
-    return ([], [])
+    sz = len(link_cost)
+    routers = [RIPRouter(i, link_cost[i]) for i in range(sz)]
+    hist = list()
+    while any([router.changed for router in routers]):
+        # print('Round Start')
+        roundRouter = [router for router in routers if router.changed]
+        for router in roundRouter:
+            for neid in router.neighbors:
+                nei = routers[neid]
+                nei.update(router.id, router.map[router.id])
+                hist.append((router.id, nei.id))
+        for router in routers:
+            router.commit()
+    return ([router.map[router.id] for router in routers], hist)
 
 
 def check(link_cost: list):
@@ -107,13 +120,13 @@ def main():
         ]
     )
     assert mini_ospf == run_ospf(mini_data[0]), 'OSPF Failed on mini_data'
-    # assert mini_rip == run_rip(mini_data[0]), 'RIP Failed on mini_data'
+    assert mini_rip[0] == run_rip(mini_data[0])[0], 'RIP Failed on mini_data'
     assert len(testdata) == len(ans_ospf)
     assert len(testdata) == len(ans_rip)
     for data, ospf, rip in zip(testdata, ans_ospf, ans_rip):
         check(data)
         assert ospf == run_ospf(data), 'OSPF Failed on testdata'
-        # assert rip == run_rip(data), 'RIP Failed on testdata'
+        assert rip[0] == run_rip(data)[0], 'RIP Failed on testdata'
 
     print('AC')
 
