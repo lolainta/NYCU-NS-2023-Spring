@@ -1,4 +1,5 @@
 from heapq import heappush, heappop
+from copy import deepcopy
 
 
 class Router():
@@ -38,7 +39,8 @@ class RIPRouter(Router):
         self.changed = True
 
     def update(self, src: int, vector: list):
-        self.map[src] = vector
+        assert src != self.id
+        self.map[src] = deepcopy(vector)
 
     def commit(self):
         self.changed = False
@@ -48,4 +50,3 @@ class RIPRouter(Router):
                     self.map[self.id][i] = \
                         self.map[self.id][j] + self.map[j][i]
                     self.changed = True
-                    # print(f'{self.id=} updated {(i,j)}')
