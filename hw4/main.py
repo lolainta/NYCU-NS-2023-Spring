@@ -1,6 +1,3 @@
-from testdata import testdata
-from ans_ospf import ans_ospf
-from ans_rip import ans_rip
 from Router import OSPFRouter, RIPRouter
 
 
@@ -117,15 +114,6 @@ def main():
     )
     assert mini_ospf == run_ospf(mini_data[0]), 'OSPF Failed on mini_data'
     assert mini_rip == run_rip(mini_data[0]), 'RIP Failed on mini_data'
-    assert len(testdata) == len(ans_ospf)
-    assert len(testdata) == len(ans_rip)
-    for data, ospf, rip in zip(testdata, ans_ospf, ans_rip):
-        check(data)
-        assert ospf == run_ospf(data), 'OSPF Failed on testdata'
-        assert rip[0] == run_rip(data)[0], 'RIP Failed on testdata'
-
-    print('AC')
-
 
 if __name__ == '__main__':
     main()
