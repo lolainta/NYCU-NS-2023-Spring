@@ -9,9 +9,7 @@ def run_ospf(link_cost: list) -> tuple[list, list]:
         # print('Round Start')
         rhist = list()
         for i in range(sz):
-            roundRouters = [
-                router for router in routers if len(router.map[i]) != 0
-            ]
+            roundRouters = [router for router in routers if len(router.map[i]) != 0]
             for router in roundRouters:
                 for neid in router.neighbors:
                     nei = routers[neid]
@@ -43,11 +41,11 @@ def run_rip(link_cost: list) -> tuple[list, list]:
 def check(link_cost: list):
     sz = len(link_cost)
     for i in range(sz):
-        assert sz == len(
-            link_cost[i]), f'ERROR: Data length invalid {link_cost}'
+        assert sz == len(link_cost[i]), f"ERROR: Data length invalid {link_cost}"
         for j in range(sz):
-            assert link_cost[i][j] == link_cost[j][
-                i], f'ERROR: Data not symmetric on [{i}][{j}]'
+            assert (
+                link_cost[i][j] == link_cost[j][i]
+            ), f"ERROR: Data not symmetric on [{i}][{j}]"
 
 
 def main():
@@ -58,7 +56,7 @@ def main():
             [5, 3, 0, 3, 1, 5],
             [1, 2, 3, 0, 1, 999],
             [999, 999, 1, 1, 0, 2],
-            [999, 999, 5, 999, 2, 0]
+            [999, 999, 5, 999, 2, 0],
         ]
     ]
     mini_ospf = (
@@ -68,21 +66,40 @@ def main():
             [3, 3, 0, 2, 1, 3],
             [1, 2, 2, 0, 1, 3],
             [2, 3, 1, 1, 0, 2],
-            [4, 5, 3, 3, 2, 0]
+            [4, 5, 3, 3, 2, 0],
         ],
         [
-            (0, 0, 1), (0, 0, 2), (0, 0, 3),
-            (1, 1, 0), (1, 1, 2), (1, 1, 3),
-            (2, 2, 0), (2, 2, 1), (2, 2, 3), (2, 2, 4), (2, 2, 5),
-            (3, 3, 0), (3, 3, 1), (3, 3, 2), (3, 3, 4),
-            (4, 4, 2), (4, 4, 3), (4, 4, 5),
-            (5, 5, 2), (5, 5, 4),
-            (2, 0, 4), (2, 0, 5),
-            (2, 1, 4), (2, 1, 5),
+            (0, 0, 1),
+            (0, 0, 2),
+            (0, 0, 3),
+            (1, 1, 0),
+            (1, 1, 2),
+            (1, 1, 3),
+            (2, 2, 0),
+            (2, 2, 1),
+            (2, 2, 3),
+            (2, 2, 4),
+            (2, 2, 5),
+            (3, 3, 0),
+            (3, 3, 1),
+            (3, 3, 2),
+            (3, 3, 4),
+            (4, 4, 2),
+            (4, 4, 3),
+            (4, 4, 5),
+            (5, 5, 2),
+            (5, 5, 4),
+            (2, 0, 4),
+            (2, 0, 5),
+            (2, 1, 4),
+            (2, 1, 5),
             (2, 3, 5),
-            (2, 4, 0), (2, 4, 1),
-            (2, 5, 0), (2, 5, 1), (2, 5, 3)
-        ]
+            (2, 4, 0),
+            (2, 4, 1),
+            (2, 5, 0),
+            (2, 5, 1),
+            (2, 5, 3),
+        ],
     )
     mini_rip = (
         [
@@ -91,29 +108,67 @@ def main():
             [3, 3, 0, 2, 1, 3],
             [1, 2, 2, 0, 1, 3],
             [2, 3, 1, 1, 0, 2],
-            [4, 5, 3, 3, 2, 0]
+            [4, 5, 3, 3, 2, 0],
         ],
         [
-            (0, 1), (0, 2), (0, 3),
-            (1, 0), (1, 2), (1, 3),
-            (2, 0), (2, 1), (2, 3), (2, 4), (2, 5),
-            (3, 0), (3, 1), (3, 2), (3, 4),
-            (4, 2), (4, 3), (4, 5),
-            (5, 2), (5, 4),
-            (0, 1), (0, 2), (0, 3),
-            (1, 0), (1, 2), (1, 3),
-            (2, 0), (2, 1), (2, 3), (2, 4), (2, 5),
-            (3, 0), (3, 1), (3, 2), (3, 4),
-            (4, 2), (4, 3), (4, 5),
-            (5, 2), (5, 4),
-            (0, 1), (0, 2), (0, 3),
-            (1, 0), (1, 2), (1, 3),
-            (2, 0), (2, 1), (2, 3), (2, 4), (2, 5),
-            (5, 2), (5, 4)
-        ]
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (1, 0),
+            (1, 2),
+            (1, 3),
+            (2, 0),
+            (2, 1),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+            (3, 0),
+            (3, 1),
+            (3, 2),
+            (3, 4),
+            (4, 2),
+            (4, 3),
+            (4, 5),
+            (5, 2),
+            (5, 4),
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (1, 0),
+            (1, 2),
+            (1, 3),
+            (2, 0),
+            (2, 1),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+            (3, 0),
+            (3, 1),
+            (3, 2),
+            (3, 4),
+            (4, 2),
+            (4, 3),
+            (4, 5),
+            (5, 2),
+            (5, 4),
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (1, 0),
+            (1, 2),
+            (1, 3),
+            (2, 0),
+            (2, 1),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+            (5, 2),
+            (5, 4),
+        ],
     )
-    assert mini_ospf == run_ospf(mini_data[0]), 'OSPF Failed on mini_data'
-    assert mini_rip == run_rip(mini_data[0]), 'RIP Failed on mini_data'
+    assert mini_ospf == run_ospf(mini_data[0]), "OSPF Failed on mini_data"
+    assert mini_rip == run_rip(mini_data[0]), "RIP Failed on mini_data"
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
