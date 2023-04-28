@@ -1,5 +1,5 @@
 from quic import QUIC
-from packet import Packet, SYN, SYNACK
+from packet import Packet, SYN, SYNACK, Stream
 from time import sleep
 from states import ClientState
 import pickle
@@ -8,42 +8,27 @@ import pickle
 class QUICClient(QUIC):
     def __init__(self) -> None:
         super().__init__()
-        self.seq = 0
-        self.ack = 0
         self.state = ClientState.IDLE
-        self.server = None
+        self.streams = dict()
 
     def connect(self, socket_addr: tuple[str, int]):
-        while True:
-            match self.state:
-                case ClientState.IDLE:
-                    pkt = SYN(self.seq, self.ack)
-                    self.sock.sendto(pkt.serialize(), socket_addr)
-                    self.seq += len(pkt)
-                    self.state = ClientState.SYN_SENT
-                case ClientState.SYN_SENT:
-                    data, addr = self.get_data("SYNACK")
-                    if data == None:
-                        self.state = ClientState.IDLE
-                    else:
-                        if addr != socket_addr:
-                            print(f"ERROR: {addr} != {socket_addr}")
-                        if not isinstance(data, SYNACK):
-                            print(f"ERROR: SYNACK expected, got {data}")
-                        self.server = addr
-                        print(f"ESTABLISHED with {self.server}")
-                        return
-                case _:
-                    assert False, "Unknown State"
+        for i in range(self.factor):
+            pkt = SYN(self.rwnd)
+            self.sock.sendto(pkt.serialize(), socket_addr)
+            sleep(1 / self.factor)
+        data, addr = self.get_data()
+        self.server = addr
+        if data is None:
+            assert False, "Server Not Alive"
+        print("ESTABLISHED Connection with server")
+        self.sender.start()
+        self.receiver.start()
 
     def send(self, stream_id: int, data: bytes):
-        """call this method to send data, with non-reputation stream_id"""
-        pass
+        super().send(stream_id, data, self.server)
 
     def recv(self) -> tuple[int, bytes]:
-        """receive a stream, with stream_id"""
-        return (1, b"abc123")
+        return super().recv()
 
     def close(self):
-        """close the connection and the socket"""
-        pass
+        super().close()
