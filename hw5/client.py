@@ -40,6 +40,11 @@ def main():
             break
     print(res.keys(), data.keys())
 
+    cur = time.time()
+    print(
+        f"average speed={loaded*8/1000/(cur-strart):.3f} Kbps: {loaded} bytes in {cur-strart:.3f} seconds",
+        end="\n",
+    )
     for k in range(5):
         assert bytes(data[k].encode()) == res[k], (data[k], res[k])
     print("verified")

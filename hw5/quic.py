@@ -47,14 +47,17 @@ class QUIC:
     def sender_func(self, sz=100):
         while True:
             cnt = 0
-            if self.verbose >= 3:
+            if self.verbose >= 2:
                 print(f"{self.resend_cnt=}")
             self.resend_cnt = 0
             with self.plock:
                 for seq, pkt in self.pkts.items():
                     if cnt >= sz:
                         continue
-                    if self.base <= seq and time.time() - pkt.lsend > 0.01:
+                    if (
+                        self.base <= seq
+                        and time.time() - pkt.lsend > (self.resend_cnt) / 10000
+                    ):
                         if pkt.lsend > 0:
                             self.resend_cnt += 1
                             # print("resend count = ", self.resend_cnt)
