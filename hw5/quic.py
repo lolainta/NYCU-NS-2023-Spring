@@ -15,7 +15,7 @@ class QUIC:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.settimeout(1)
         self.factor = 100
-        self.rwnd = 10
+        self.rwnd = 100000
 
         self.sender: Thread
         self.receiver = Thread(target=self.__receiver_func)
@@ -42,10 +42,12 @@ class QUIC:
 
         self.resend_cnt = 0
 
+        self.got = list()
+
     def sender_func(self, sz=100):
         while True:
             cnt = 0
-            if self.verbose >= 2:
+            if self.verbose >= 3:
                 print(f"{self.resend_cnt=}")
             self.resend_cnt = 0
             with self.plock:
@@ -78,6 +80,9 @@ class QUIC:
             sleep(0.01)
         pass
 
+    def flush_acked(self):
+        pass
+
     def __receiver_func(self):
         while True:
             pkt = self.get_data()[0]
@@ -90,17 +95,40 @@ class QUIC:
             # print("recv:", pkt)
             if isinstance(pkt, ACK):
                 assert pkt.seq == -1, "Invalid ack"
+                if pkt.pack >= self.base:
+                    with self.plock:
+                        if pkt.pack in self.pkts:
+                            del self.pkts[pkt.pack]
                 self.base = max(self.base, pkt.ack)
             else:
                 # if pkt.sid == 3:
                 #     continue
-                if pkt.seq == self.ack:
-                    self.ack += 1
+                self.mex(pkt.seq)
+                # if pkt.seq == self.ack:
+                #     self.ack += 1
                 ack = ACK(-1, self.ack, pkt.seq)
                 if self.verbose >= 2:
                     print(f"send ack {ack}")
                 self.sock.sendto(ack.serialize(), self.peer)
                 self.add_stream(pkt)
+
+    def mex(self, new: int):
+        if new < self.ack:
+            return
+        heapq.heappush(self.got, new)
+        if new > self.ack:
+            return
+        top = heapq.heappop(self.got)
+        while top <= self.ack:
+            if top == self.ack:
+                self.ack += 1
+            else:
+                if len(self.got):
+                    top = heapq.heappop(self.got)
+                else:
+                    break
+        heapq.heappush(self.got, top)
+        return
 
     def add_stream(self, pkt: Packet):
         with self.ilock:
@@ -162,7 +190,7 @@ class QUIC:
                             if front[0] > self.istreams[k]:
                                 v.put(front)
                             if front == fst:
-                                if self.verbose >= 3:
+                                if self.verbose >= 2:
                                     print(f"No matched in stream {k}")
                                 break
             if self.verbose >= 1:
@@ -175,6 +203,6 @@ class QUIC:
         self.stops.set()
         self.sender.join()
         print("closing...")
-        sleep(5)
+        sleep(3)
         self.stopr.set()
         self.receiver.join()
