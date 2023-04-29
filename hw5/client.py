@@ -2,7 +2,7 @@ from quic_client import QUICClient
 import random
 import string
 
-DATA_LEN = int(1e4)
+DATA_LEN = int(1e6)
 
 
 def main():

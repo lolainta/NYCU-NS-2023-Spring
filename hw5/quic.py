@@ -15,8 +15,8 @@ class QUIC:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.settimeout(1)
         self.factor = 10
-        self.rwnd = 1000
-        # self.sender = Thread(target=self.sender_func)
+        self.rwnd = 100000
+        self.sender: Thread
         self.receiver = Thread(target=self.__receiver_func)
         self.olock = Lock()
         self.ostream: dict[int, Queue] = dict()
@@ -37,6 +37,9 @@ class QUIC:
         self.istream: dict[int, Queue[tuple[int, bytes]]] = dict()
         self.istreams: dict[int, int] = dict()
 
+        self.stop = Event()
+        self.stopr = Event()
+
     def sender_func(self, sz=100):
         while True:
             cnt = 0
@@ -55,6 +58,13 @@ class QUIC:
                     else:
                         # print(f"{seq=} acked")
                         pass
+                print(self.base, len(self.pkts), end=" => ")
+                self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
+                print(len(self.pkts))
+                if self.stop.is_set() and len(self.pkts) == 0:
+                    print("sender stop")
+                    # self.stopr.set()
+                    break
             sleep(0.1)
         pass
 
@@ -63,7 +73,9 @@ class QUIC:
             pkt = self.get_data()[0]
             while pkt.ack == -1:
                 pkt = self.get_data()[0]
-                # print("timeout ")
+                if self.stopr.is_set():
+                    print("receiver stop")
+                    return
             # print("recv:", pkt)
             if isinstance(pkt, ACK):
                 assert pkt.seq == -1, "Invalid ack"
@@ -142,11 +154,13 @@ class QUIC:
                                 break
             if self.verbose:
                 print("recv waiting")
-            sleep(0.1)
+            sleep(0.05)
         return (0, b"abc123")
 
     def close(self):
-        exit()
-        pass
+        self.stop.set()
         self.sender.join()
+        print("closeing")
+        sleep(5)
+        self.stopr.set()
         self.receiver.join()
