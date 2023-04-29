@@ -58,13 +58,15 @@ class QUIC:
                     else:
                         # print(f"{seq=} acked")
                         pass
-                print(self.base, len(self.pkts), end=" => ")
+                if self.verbose:
+                    print(self.base, len(self.pkts), end=" => ")
                 self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
-                print(len(self.pkts))
+                if self.verbose:
+                    print(len(self.pkts))
                 if self.stop.is_set() and len(self.pkts) == 0:
-                    print("sender stop")
-                    # self.stopr.set()
-                    break
+                    if self.verbose:
+                        print("sender stop")
+                    return
             sleep(0.1)
         pass
 
@@ -74,7 +76,8 @@ class QUIC:
             while pkt.ack == -1:
                 pkt = self.get_data()[0]
                 if self.stopr.is_set():
-                    print("receiver stop")
+                    if self.verbose:
+                        print("receiver stop")
                     return
             # print("recv:", pkt)
             if isinstance(pkt, ACK):
@@ -160,7 +163,7 @@ class QUIC:
     def close(self):
         self.stop.set()
         self.sender.join()
-        print("closeing")
+        print("closing...")
         sleep(5)
         self.stopr.set()
         self.receiver.join()
