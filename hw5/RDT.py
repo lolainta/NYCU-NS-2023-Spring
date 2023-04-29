@@ -1,15 +1,14 @@
 import socket
 import pickle
-from packet import Stream, SYN, SYNACK, Packet, ACK, FIN
+from packet import Packet, ACK
 from threading import Thread, Lock, Event
 from time import sleep
 from queue import Queue
-from copy import deepcopy
 import time
 import heapq
 
 
-class QUIC:
+class RDT:
     def __init__(self) -> None:
         self.verbose = 2
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)

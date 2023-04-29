@@ -1,12 +1,11 @@
-from quic import QUIC
-from packet import Packet, SYN, SYNACK
-import pickle
+from hw5.RDT import RDT
+from packet import SYNACK
 from states import ServerState
 from time import sleep
 from threading import Thread
 
 
-class QUICServer(QUIC):
+class RDTServer(RDT):
     def __init__(self) -> None:
         super().__init__()
         self.state = ServerState.IDLE

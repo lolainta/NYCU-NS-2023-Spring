@@ -1,12 +1,12 @@
-from quic import QUIC
-from packet import Packet, SYN, SYNACK, Stream
+from hw5.RDT import RDT
+from packet import SYN
 from time import sleep
 from states import ClientState
 import pickle
 from threading import Thread
 
 
-class QUICClient(QUIC):
+class RDTClient(RDT):
     def __init__(self) -> None:
         super().__init__()
         self.state = ClientState.IDLE
