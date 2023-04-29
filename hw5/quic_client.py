@@ -3,6 +3,7 @@ from packet import Packet, SYN, SYNACK, Stream
 from time import sleep
 from states import ClientState
 import pickle
+from threading import Thread
 
 
 class QUICClient(QUIC):
@@ -17,15 +18,16 @@ class QUICClient(QUIC):
             self.sock.sendto(pkt.serialize(), socket_addr)
             sleep(1 / self.factor)
         data, addr = self.get_data()
-        self.server: tuple[str, int] = addr
-        if data.data is None:
+        if data.seq == -1:
             assert False, "Server Not Alive"
-        print("ESTABLISHED Connection with server")
+        print(f"ESTABLISHED Connection with server, window size = {data.rwnd}")
+        self.peer = addr
+        self.sender = Thread(target=self.sender_func, args=(data.rwnd,))
         self.sender.start()
         self.receiver.start()
 
     def send(self, stream_id: int, data: bytes):
-        super().send(stream_id, data, self.server)
+        super().send(stream_id, data)
 
     def recv(self) -> tuple[int, bytes]:
         return super().recv()

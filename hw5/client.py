@@ -2,17 +2,17 @@ from quic_client import QUICClient
 import random
 import string
 
-DATA_LEN = int(1e5)
+DATA_LEN = int(1e4)
 
 
 def main():
     client = QUICClient()
-    client.verbose = True
+    client.verbose = False
     client.connect(("localhost", 30000))
     recv_id, recv_data = client.recv()
     print(recv_data.decode("utf-8"))
     client.send(recv_id, b"Hello Server!")
-
+    random.seed(45510)
     data = dict()
     for i in range(5):
         data[i] = "".join(random.choices(string.ascii_letters, k=DATA_LEN))
@@ -29,7 +29,11 @@ def main():
         if all([len(v) == DATA_LEN for v in res.values()]) and len(res) == 5:
             print("done")
             break
+    print(res.keys(), data.keys())
 
+    for k in range(5):
+        assert bytes(data[k].encode()) == res[k], (data[k], res[k])
+    print("verified")
     client.close()
 
 

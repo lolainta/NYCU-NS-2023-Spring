@@ -2,12 +2,12 @@ from quic_server import QUICServer
 import random
 import string
 
-DATA_LEN = int(1e5)
+DATA_LEN = int(1e4)
 
 
 def main():
     server = QUICServer()
-    server.verbose = True
+    server.verbose = False
     server.listen(("", 30000))
     server.accept()
     server.send(100, b"SOME DATA, MAY EXCEED 1500 bytes")
