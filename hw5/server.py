@@ -7,7 +7,7 @@ DATA_LEN = int(1e6)
 
 def main():
     server = QUICServer()
-    server.verbose = False
+    server.verbose = 0
     server.listen(("", 30000))
     server.accept()
     server.send(100, b"SOME DATA, MAY EXCEED 1500 bytes")

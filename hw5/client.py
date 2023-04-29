@@ -1,13 +1,14 @@
 from quic_client import QUICClient
 import random
 import string
+import time
 
 DATA_LEN = int(1e6)
 
 
 def main():
     client = QUICClient()
-    client.verbose = False
+    client.verbose = 0
     client.connect(("localhost", 30000))
     recv_id, recv_data = client.recv()
     print(recv_data.decode("utf-8"))
@@ -18,8 +19,16 @@ def main():
         data[i] = "".join(random.choices(string.ascii_letters, k=DATA_LEN))
 
     res = dict()
+    strart = time.time()
+    loaded = 0
     while True:
         recv_id, recv_data = client.recv()
+        loaded += len(recv_data)
+        cur = time.time()
+        print(
+            f"average speed={loaded*8/1000/(cur-strart):.3f} Kbps: {loaded} bytes in {cur-strart:.3f} seconds",
+            end="\n",
+        )
         if recv_id not in res:
             res[recv_id] = b""
         res[recv_id] += recv_data

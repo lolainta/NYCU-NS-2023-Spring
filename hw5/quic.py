@@ -11,16 +11,16 @@ import heapq
 
 class QUIC:
     def __init__(self) -> None:
-        self.verbose = True
+        self.verbose = 2
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.settimeout(1)
-        self.factor = 10
-        self.rwnd = 100000
+        self.factor = 100
+        self.rwnd = 10
+
         self.sender: Thread
         self.receiver = Thread(target=self.__receiver_func)
-        self.olock = Lock()
-        self.ostream: dict[int, Queue] = dict()
 
+        self.ostream: dict[int, Queue] = dict()
         self.ostreams: dict[int, int] = dict()
 
         self.peer: tuple[str, int]
@@ -37,37 +37,45 @@ class QUIC:
         self.istream: dict[int, Queue[tuple[int, bytes]]] = dict()
         self.istreams: dict[int, int] = dict()
 
-        self.stop = Event()
+        self.stops = Event()
         self.stopr = Event()
+
+        self.resend_cnt = 0
 
     def sender_func(self, sz=100):
         while True:
             cnt = 0
+            if self.verbose >= 2:
+                print(f"{self.resend_cnt=}")
+            self.resend_cnt = 0
             with self.plock:
                 for seq, pkt in self.pkts.items():
                     if cnt >= sz:
                         continue
-                    if self.base <= seq and time.time() - pkt.lsend > 0.1:
+                    if self.base <= seq and time.time() - pkt.lsend > 0.01:
+                        if pkt.lsend > 0:
+                            self.resend_cnt += 1
+                            # print("resend count = ", self.resend_cnt)
                         pkt.ack = self.ack
-                        if self.verbose:
+                        if self.verbose >= 2:
                             print("send:", pkt)
                         pkt.lsend = time.time()
                         cnt += 1
                         self.sock.sendto(pkt.serialize(), self.peer)
-                        # sleep(1)
+                        # sleep(0.001)
                     else:
-                        # print(f"{seq=} acked")
-                        pass
-                if self.verbose:
+                        if self.verbose >= 2:
+                            print(f"{seq=} acked")
+                if self.verbose >= 1:
                     print(self.base, len(self.pkts), end=" => ")
                 self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
-                if self.verbose:
+                if self.verbose >= 1:
                     print(len(self.pkts))
-                if self.stop.is_set() and len(self.pkts) == 0:
-                    if self.verbose:
+                if self.stops.is_set() and len(self.pkts) == 0:
+                    if self.verbose >= 1:
                         print("sender stop")
                     return
-            sleep(0.1)
+            sleep(0.01)
         pass
 
     def __receiver_func(self):
@@ -76,7 +84,7 @@ class QUIC:
             while pkt.ack == -1:
                 pkt = self.get_data()[0]
                 if self.stopr.is_set():
-                    if self.verbose:
+                    if self.verbose >= 1:
                         print("receiver stop")
                     return
             # print("recv:", pkt)
@@ -84,14 +92,15 @@ class QUIC:
                 assert pkt.seq == -1, "Invalid ack"
                 self.base = max(self.base, pkt.ack)
             else:
+                # if pkt.sid == 3:
+                #     continue
                 if pkt.seq == self.ack:
                     self.ack += 1
                 ack = ACK(-1, self.ack, pkt.seq)
-                # print(f"send ack {ack}")
+                if self.verbose >= 2:
+                    print(f"send ack {ack}")
                 self.sock.sendto(ack.serialize(), self.peer)
                 self.add_stream(pkt)
-            # sleep(1)
-        pass
 
     def add_stream(self, pkt: Packet):
         with self.ilock:
@@ -106,13 +115,11 @@ class QUIC:
             raw, addr = self.sock.recvfrom(1024)
             self.addr = addr
             data = pickle.loads(raw)
-            if self.verbose:
-                # print(data, addr)
-                pass
+            if self.verbose >= 3:
+                print(data, addr)
         except TimeoutError as e:
-            if self.verbose and msg != "SYN":
-                # print(e, msg)
-                pass
+            if self.verbose >= 3:
+                print(e, msg)
             return (Packet(-1), ("", -1))
         else:
             return (data, addr)
@@ -120,7 +127,6 @@ class QUIC:
     def send(self, stream_id: int, data: bytes):
         if stream_id not in self.ostreams:
             self.ostreams[stream_id] = 0
-
         while len(data) > 0:
             pkt = Packet(self.seq)
             self.seq += 1
@@ -136,13 +142,15 @@ class QUIC:
                 data = data[800:]
             with self.plock:
                 self.pkts[pkt.seq] = pkt
-        if self.verbose:
+        if self.verbose >= 1:
             print(f"sent {stream_id}")
 
     def recv(self) -> tuple[int, bytes]:
         while True:
+            wtime = 0
             with self.ilock:
                 for k, v in self.istream.items():
+                    wtime += v.qsize()
                     if v.qsize():
                         fst = v.get()
                         v.put(fst)
@@ -151,17 +159,20 @@ class QUIC:
                             if self.istreams[k] == front[0]:
                                 self.istreams[k] += len(front[1])
                                 return k, front[1]
-                            v.put(front)
+                            if front[0] > self.istreams[k]:
+                                v.put(front)
                             if front == fst:
-                                # print(f"No matched in stream {k}")
+                                if self.verbose >= 3:
+                                    print(f"No matched in stream {k}")
                                 break
-            if self.verbose:
+            if self.verbose >= 1:
                 print("recv waiting")
-            sleep(0.05)
-        return (0, b"abc123")
+            # print(f"receiver: {wtime=}")
+            sleep(0.001)
+            # sleep(1 / (wtime + 10))
 
     def close(self):
-        self.stop.set()
+        self.stops.set()
         self.sender.join()
         print("closing...")
         sleep(5)
