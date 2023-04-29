@@ -17,8 +17,8 @@ class QUICClient(QUIC):
             self.sock.sendto(pkt.serialize(), socket_addr)
             sleep(1 / self.factor)
         data, addr = self.get_data()
-        self.server = addr
-        if data is None:
+        self.server: tuple[str, int] = addr
+        if data.data is None:
             assert False, "Server Not Alive"
         print("ESTABLISHED Connection with server")
         self.sender.start()

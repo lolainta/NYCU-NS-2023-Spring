@@ -16,7 +16,7 @@ class Packet:
         return len(self.data)
 
     def __repr__(self) -> str:
-        return f"{self.stream} {self.offset} {self.data}"
+        return f"seq={self.seq} ack={self.ack} sid={self.stream} off={self.offset} len={len(self.data)}"
 
     def serialize(self) -> bytes:
         return pickle.dumps(self)
@@ -29,7 +29,8 @@ class SYN(Packet):
 
 
 class SYNACK(Packet):
-    def __init__(self, rwnd: int, syn: SYN) -> None:
+    def __init__(self, rwnd: int, syn: Packet) -> None:
+        assert isinstance(syn, SYN)
         if syn == None:
             assert False
         super().__init__(0, 0, "SYNACK")
@@ -39,6 +40,7 @@ class SYNACK(Packet):
 class ACK(Packet):
     def __init__(self, ack: int) -> None:
         super().__init__(0, ack, "ACK")
+        self.ub = 0
 
 
 class FIN(Packet):

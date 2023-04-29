@@ -10,7 +10,7 @@ class QUICServer(QUIC):
     def __init__(self) -> None:
         super().__init__()
         self.state = ServerState.IDLE
-        self.verbose = True
+        # self.verbose = True
 
     def listen(self, socket_addr: tuple[str, int]):
         self.sock.bind(socket_addr)
@@ -18,7 +18,7 @@ class QUICServer(QUIC):
 
     def accept(self):
         data, addr = self.get_data("SYN")
-        while data is None:
+        while data.data is None:
             data, addr = self.get_data("SYN")
         self.client = addr
         for i in range(self.factor):
