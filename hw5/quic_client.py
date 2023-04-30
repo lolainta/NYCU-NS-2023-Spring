@@ -1,4 +1,4 @@
-from hw5.RDT import RDT
+from RDT import RDT
 from packet import SYN
 from time import sleep
 from states import ClientState
@@ -6,7 +6,7 @@ import pickle
 from threading import Thread
 
 
-class RDTClient(RDT):
+class QUICClient(RDT):
     def __init__(self) -> None:
         super().__init__()
         self.state = ClientState.IDLE

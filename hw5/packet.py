@@ -13,7 +13,7 @@ class Packet:
 
         self.lsend: float = 0
 
-        self.rwnd: int = 10
+        self.rwnd: int
 
     def __len__(self):
         return len(self.data)

@@ -1,0 +1,2 @@
+STREAM_NUM = 5
+DATA_LEN = int(1e6)

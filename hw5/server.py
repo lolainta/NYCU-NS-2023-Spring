@@ -1,12 +1,11 @@
-from RDTServer import RDTServer
+from quic_server import QUICServer
 import random
 import string
-
-DATA_LEN = int(1e6)
+from config import STREAM_NUM, DATA_LEN
 
 
 def main():
-    server = RDTServer()
+    server = QUICServer()
     server.verbose = 0
     server.listen(("", 30000))
     server.accept()
@@ -17,7 +16,7 @@ def main():
     # Generate Data
     random.seed(45510)
     data: dict[int, str] = dict()
-    for i in range(5):
+    for i in range(STREAM_NUM):
         data[i] = "".join(random.choices(string.ascii_letters, k=DATA_LEN))
 
     # Send Data
