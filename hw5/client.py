@@ -6,6 +6,7 @@ from config import STREAM_NUM, DATA_LEN
 
 
 def main():
+    print(f"Receiveing {STREAM_NUM} streams with each {DATA_LEN/1000} KB")
     client = QUICClient()
     client.verbose = 0
     client.connect(("localhost", 30000))
@@ -16,7 +17,7 @@ def main():
     res = dict()
     strart = time.time()
     loaded = 0
-    while True:
+    while True and STREAM_NUM * DATA_LEN != 0:
         recv_id, recv_data = client.recv()
         loaded += len(recv_data)
 
@@ -34,11 +35,11 @@ def main():
         # Print Speed
         cur = time.time()
         print(
-            f"average speed = {loaded*8/1000/(cur-strart):.3f} Kbps: {loaded} bytes in {cur-strart:.3f} seconds",
+            f"average speed: {loaded*8/1000/(cur-strart):.3f} Kbps ({loaded/1000:.3f} KB in {cur-strart:.3f} seconds)",
             end="\r",
         )
 
-        if all([len(v) == DATA_LEN for v in res.values()]) and len(res) == 5:
+        if all([len(v) == DATA_LEN for v in res.values()]) and len(res) == STREAM_NUM:
             print("done")
             break
 

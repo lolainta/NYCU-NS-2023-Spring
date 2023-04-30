@@ -5,6 +5,7 @@ from config import STREAM_NUM, DATA_LEN
 
 
 def main():
+    print(f"Sending {STREAM_NUM} streams with each {DATA_LEN/1000} KB")
     server = QUICServer()
     server.verbose = 0
     server.listen(("", 30000))

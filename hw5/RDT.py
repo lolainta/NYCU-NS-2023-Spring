@@ -13,8 +13,8 @@ class RDT:
         self.verbose = 2
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.settimeout(1)
-        self.factor = 100
-        self.rwnd = 100000
+        self.factor = 50
+        self.rwnd = 1000
 
         self.sender: Thread
         self.receiver = Thread(target=self.__receiver_func)
@@ -30,6 +30,7 @@ class RDT:
         self.seq = 0
         self.ack = 0
 
+        self.block = Lock()
         self.base = -1
 
         self.ilock = Lock()
@@ -39,51 +40,57 @@ class RDT:
         self.stops = Event()
         self.stopr = Event()
 
-        self.resend_cnt = 0
-
         self.got = list()
 
     def sender_func(self, sz=100):
+        resend_cnt = 0
         while True:
+            if self.verbose >= 1:
+                if resend_cnt:
+                    print(f"{resend_cnt=}")
             cnt = 0
-            if self.verbose >= 2:
-                print(f"{self.resend_cnt=}")
-            self.resend_cnt = 0
+            resend_cnt = 0
             with self.plock:
+                if self.verbose >= 2:
+                    if len(self.pkts):
+                        print("pkts len", len(self.pkts))
                 for seq, pkt in self.pkts.items():
                     if cnt >= sz:
-                        continue
-                    if (
-                        self.base <= seq
-                        and time.time() - pkt.lsend > (self.resend_cnt) / 10000
-                    ):
-                        if pkt.lsend > 0:
-                            self.resend_cnt += 1
-                            # print("resend count = ", self.resend_cnt)
-                        pkt.ack = self.ack
-                        if self.verbose >= 2:
-                            print("send:", pkt)
-                        pkt.lsend = time.time()
-                        cnt += 1
-                        self.sock.sendto(pkt.serialize(), self.peer)
-                        # sleep(0.001)
-                    else:
-                        if self.verbose >= 2:
-                            print(f"{seq=} acked")
+                        if self.verbose >= 1:
+                            print(f"{self.base}: {cnt=} {resend_cnt=}")
+                        sleep(0.01)
+                        break
+                    with self.block:
+                        if self.base <= seq and time.time() - pkt.lsend > min(
+                            [(resend_cnt + 1) / 10, 5]
+                        ):
+                            if pkt.lsend > 0:
+                                resend_cnt += 1
+                            pkt.ack = self.ack
+                            if self.verbose >= 2:
+                                print("send:", pkt)
+                            pkt.lsend = time.time()
+                            cnt += 1
+                            self.sock.sendto(pkt.serialize(), self.peer)
+                            if resend_cnt >= sz / 5:
+                                if self.verbose >= 1:
+                                    print(f"{self.base}: {cnt=} {resend_cnt=}")
+                                sleep(0.001)
+                        else:
+                            if self.verbose >= 2:
+                                print(f"{seq=} acked {pkt.lsend}")
+
+                tmp = len(self.pkts)
+                with self.block:
+                    self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
                 if self.verbose >= 1:
-                    print(self.base, len(self.pkts), end=" => ")
-                self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
-                if self.verbose >= 1:
-                    print(len(self.pkts))
+                    if tmp != len(self.pkts):
+                        print(f"pkts: {tmp} => {len(self.pkts)}")
                 if self.stops.is_set() and len(self.pkts) == 0:
                     if self.verbose >= 1:
                         print("sender stop")
                     return
-            sleep(0.01)
-        pass
-
-    def flush_acked(self):
-        pass
+            sleep(min([resend_cnt / 1000, 1]))
 
     def __receiver_func(self):
         while True:
@@ -109,8 +116,8 @@ class RDT:
                 # if pkt.seq == self.ack:
                 #     self.ack += 1
                 ack = ACK(-1, self.ack, pkt.seq)
-                if self.verbose >= 2:
-                    print(f"send ack {ack}")
+                if self.verbose >= 1:
+                    print(f"send ack {ack} {ack.pack}")
                 self.sock.sendto(ack.serialize(), self.peer)
                 self.add_stream(pkt)
 
@@ -195,7 +202,7 @@ class RDT:
                                 if self.verbose >= 2:
                                     print(f"No matched in stream {k}")
                                 break
-            if self.verbose >= 1:
+            if self.verbose >= 2:
                 print("recv waiting")
             # print(f"receiver: {wtime=}")
             sleep(0.001)
