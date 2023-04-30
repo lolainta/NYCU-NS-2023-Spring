@@ -14,7 +14,7 @@ class RDT:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.settimeout(1)
         self.factor = 50
-        self.rwnd = 1000
+        self.rwnd = 1000000
 
         self.sender: Thread
         self.receiver = Thread(target=self.__receiver_func)

@@ -40,7 +40,7 @@ def main():
         )
 
         if all([len(v) == DATA_LEN for v in res.values()]) and len(res) == STREAM_NUM:
-            print("done")
+            print("\ndone")
             break
 
     client.close()
