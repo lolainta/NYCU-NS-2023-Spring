@@ -30,7 +30,6 @@ class RDT:
         self.seq = 0
         self.ack = 0
 
-        self.block = Lock()
         self.base = -1
 
         self.ilock = Lock()
@@ -60,29 +59,27 @@ class RDT:
                             print(f"{self.base}: {cnt=} {resend_cnt=}")
                         sleep(0.01)
                         break
-                    with self.block:
-                        if self.base <= seq and time.time() - pkt.lsend > min(
-                            [(resend_cnt + 1) / 10, 5]
-                        ):
-                            if pkt.lsend > 0:
-                                resend_cnt += 1
-                            pkt.ack = self.ack
-                            if self.verbose >= 2:
-                                print("send:", pkt)
-                            pkt.lsend = time.time()
-                            cnt += 1
-                            self.sock.sendto(pkt.serialize(), self.peer)
-                            if resend_cnt >= sz / 5:
-                                if self.verbose >= 1:
-                                    print(f"{self.base}: {cnt=} {resend_cnt=}")
-                                sleep(0.001)
-                        else:
-                            if self.verbose >= 2:
-                                print(f"{seq=} acked {pkt.lsend}")
+                    if self.base <= seq and time.time() - pkt.lsend > min(
+                        [(resend_cnt + 1) / 10, 5]
+                    ):
+                        if pkt.lsend > 0:
+                            resend_cnt += 1
+                        pkt.ack = self.ack
+                        if self.verbose >= 2:
+                            print("send:", pkt)
+                        pkt.lsend = time.time()
+                        cnt += 1
+                        self.sock.sendto(pkt.serialize(), self.peer)
+                        if resend_cnt >= sz / 5:
+                            if self.verbose >= 1:
+                                print(f"{self.base}: {cnt=} {resend_cnt=}")
+                            sleep(0.001)
+                    else:
+                        if self.verbose >= 2:
+                            print(f"{seq=} acked {pkt.lsend}")
 
                 tmp = len(self.pkts)
-                with self.block:
-                    self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
+                self.pkts = {k: v for k, v in self.pkts.items() if k >= self.base}
                 if self.verbose >= 1:
                     if tmp != len(self.pkts):
                         print(f"pkts: {tmp} => {len(self.pkts)}")
