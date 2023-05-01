@@ -1,5 +1,5 @@
 from RDT import RDT
-from packet import SYNACK
+from packet import SYNACK, SYN
 from states import ServerState
 from time import sleep
 from threading import Thread
@@ -13,12 +13,15 @@ class QUICServer(RDT):
 
     def listen(self, socket_addr: tuple[str, int]):
         self.sock.bind(socket_addr)
-        pass
+        self.bind_addr = socket_addr
 
     def accept(self):
         data, addr = self.get_data("SYN")
-        while data.data is None:
+        while not isinstance(data, SYN):
             data, addr = self.get_data("SYN")
+            print(
+                f"Waitng for client's SYN packet, please make sure that client is connected to {self.bind_addr}"
+            )
         for i in range(self.factor):
             self.sock.sendto(SYNACK(self.rwnd, data).serialize(), addr)
             sleep(1 / self.factor)
