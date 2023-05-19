@@ -9,6 +9,7 @@ class Pointer:
     def lookahead(self, v):
         return self.v + v
 
+
 class HeapNode:
     def __init__(self, k, v) -> None:
         self.k = k
@@ -22,6 +23,7 @@ class HeapNode:
 
     def __eq__(self, other) -> bool:
         return self.k == other.k and self.v == other.v
+
 
 class Buffer:
     def __init__(self, size) -> None:

@@ -1,4 +1,4 @@
-from my import http_1_0_client
+from http_1_0_client import http_1_0_client
 import json
 import os
 import glob
