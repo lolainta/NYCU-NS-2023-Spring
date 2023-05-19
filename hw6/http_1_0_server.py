@@ -59,16 +59,16 @@ class ClientHandler:
             response[
                 "body"
             ] = """
-<html>
-    <header></header>
-    <body>
-        <a href="/static/{0}">{0}</a>
-        <br/>
-        <a href="/static/{1}">{1}</a>
-        <br/>
-        <a href="/static/{2}">{2}</a>
-    </body>
-</html>
+            <html>
+                <header></header>
+                <body>
+                    <a href="/static/{0}">{0}</a>
+                    <br/>
+                    <a href="/static/{1}">{1}</a>
+                    <br/>
+                    <a href="/static/{2}">{2}</a>
+                </body>
+            </html>
             """.format(
                 *files
             )
