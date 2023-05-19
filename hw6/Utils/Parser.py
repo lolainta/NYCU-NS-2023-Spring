@@ -1,4 +1,4 @@
-def parse_header(data):
+def parse_header(data: str):
     # Split the request into a list of strings
     lines = data.split("\r\n")
     # Initialize an empty dictionary to store the headers
@@ -16,7 +16,7 @@ def parse_header(data):
     return headers
 
 
-def parse_resource(resource):
+def parse_resource(resource: str):
     # Split resource into path and parameters
     resource = resource.split("?")
     if len(resource) == 2:
@@ -40,7 +40,7 @@ def parse_resource(resource):
     return path, params
 
 
-def parse_response(response_str):
+def parse_response(response_str: str):
     response = {
         "version": "",  # e.g. "HTTP/1.0"
         "status": "",  # e.g. "200 OK"
@@ -84,7 +84,7 @@ def parse_response(response_str):
     return response
 
 
-def parse_reqeust(request_str):
+def parse_reqeust(request_str: str):
     request = {
         "method": "",  # e.g. "GET"
         "path": "",  # e.g. "/"

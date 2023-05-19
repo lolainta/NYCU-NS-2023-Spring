@@ -74,7 +74,7 @@ class ClientHandler:
             )
             response["headers"] = {
                 "Content-Type": "text/html",
-                "Context-Length": len(request["body"]),
+                "Content-Length": len(request["body"]),
             }
         elif path == "/get":
             if "id" in params:

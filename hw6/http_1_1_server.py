@@ -5,8 +5,10 @@ import json
 from hashlib import sha256
 import hmac
 import base64
-import random
 from Utils import Parser
+import os
+import random
+import io
 
 
 def hmac_sha256(data, key):
@@ -18,7 +20,8 @@ def hmac_sha256(data, key):
 
 
 class ClientHandler:
-    def __init__(self, client, address) -> None:
+    def __init__(self, client: socket.socket, address, static) -> None:
+        self.static = static
         self.client = client
         self.client.settimeout(5)
         self.address = address
@@ -49,19 +52,56 @@ class ClientHandler:
         path = request["path"]
         params = request["params"]
         response = self.__not_found_response()
+        files = os.listdir(self.static)
         if path == "/":
             response["status"] = "200 OK"
-            response["headers"] = {"Content-Type": "text/html"}
-            response["body"] = "<html><body>" + "<h1>HTTP 1.0</h1>" + "</body></html>"
+            files = random.sample(files, k=3)
+            response[
+                "body"
+            ] = """
+            <html>
+                <header></header>
+                <body>
+                    <a href="/static/{0}">{0}</a>
+                    <br/>
+                    <a href="/static/{1}">{1}</a>
+                    <br/>
+                    <a href="/static/{2}">{2}</a>
+                </body>
+            </html>
+            """.format(
+                *files
+            )
+            response["headers"] = {
+                "Content-Type": "text/html",
+                "Content-Length": len(request["body"]),
+            }
         elif path == "/get":
             if "id" in params:
                 response["status"] = "200 OK"
                 response["headers"] = {"Content-Type": "application/json"}
-                response["body"] = json.dumps({"id": params["id"], "key": self.key})
+                response["body"] = json.dumps(
+                    {"id": params["id"], "key": hmac_sha256(params["id"], "http10")}
+                )
             else:
                 response["status"] = "200 OK"
                 response["headers"] = {"Content-Type": "application/json"}
                 response["body"] = json.dumps({"id": "", "key": ""})
+        elif path[:8] == "/static/":
+            if path[8:] in files:
+                response["status"] = "200 OK"
+                content = ""
+                with io.open(os.path.join(self.static, path[8:]), "r", newline="") as f:
+                    content = f.readlines()
+                content = "".join(content)
+                response["body"] = content
+                response["headers"] = {
+                    "Content-Type": "Content-Type: text/plain",
+                    "Content-Length": len(content),
+                }
+                print(response["headers"])
+        else:
+            print(path)
         self.__send_response(request, response)
 
     def __do_post(self, request):
@@ -151,7 +191,7 @@ class ClientHandler:
         self.client.close()
 
 
-class HttpServer_1_1:
+class HTTPServer:
     def __init__(self, host="127.0.0.1", port=8080) -> None:
         # Create a socket object
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -173,7 +213,7 @@ class HttpServer_1_1:
                 # Establish a connection with the client
                 client, address = self.socket.accept()
 
-                client_handler = ClientHandler(client, address)
+                client_handler = ClientHandler(client, address, self.static)
 
                 for handler in reversed(self.handler_list):
                     if not handler.alive:
@@ -183,6 +223,9 @@ class HttpServer_1_1:
             except:
                 # catch socket closed
                 self.alive = False
+
+    def set_static(self, static):
+        self.static = static
 
     def run(self):
         if not self.alive:
@@ -200,9 +243,9 @@ class HttpServer_1_1:
 
 
 if __name__ == "__main__":
-    server = HttpServer_1_1()
+    server = HTTPServer(host="127.0.0.1", port=8081)
+    server.set_static("../../static")
     server.run()
-
     while True:
         cmd = input()
         if cmd == "close" or cmd == "exit":
