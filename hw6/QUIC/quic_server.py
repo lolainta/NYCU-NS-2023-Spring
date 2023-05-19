@@ -7,6 +7,7 @@ from copy import deepcopy
 
 now = lambda: time.time()
 
+
 class QUICServer:
     def __init__(self) -> None:
         self.client_addr = None
@@ -76,7 +77,6 @@ class QUICServer:
         self.receive_manager.start()
         # self.meter_manager.start()
 
-
     def send(self, stream_id, data, end=False):
         pkt = Packet()
 
@@ -86,7 +86,9 @@ class QUICServer:
                 ptr = 0
                 stream_id_data[id] = []
                 while ptr <= len(data[i]):
-                    stream_id_data[id].append((ptr, data[i][ptr:min(ptr+1400, len(data[i]))]))
+                    stream_id_data[id].append(
+                        (ptr, data[i][ptr : min(ptr + 1400, len(data[i]))])
+                    )
                     ptr += 1400
 
             while all([len(datas) != 0 for datas in stream_id_data.values()]):
@@ -97,7 +99,11 @@ class QUICServer:
                         pkt.header.header_form = 0
                         pkt.header.pkt_num = self.pkt_num_inc()
                         pkt.header.dst_id = 0
-                        pkt.frame.type = Frame.STREAM if len(datas) != 0 else Frame.STREAM | Frame.FIN
+                        pkt.frame.type = (
+                            Frame.STREAM
+                            if len(datas) != 0
+                            else Frame.STREAM | Frame.FIN
+                        )
                         pkt.frame.stream_id = id
                         pkt.frame.offset = offset
                         pkt.frame.stream_data = data
@@ -105,7 +111,6 @@ class QUICServer:
                         b = pkt.serialize()
                         self.send_wait_list.append((pkt.header.pkt_num, b, 0.0))
 
-                    
         elif type(stream_id) == int and type(data) == bytes:
             if stream_id not in self.send_offsets.keys():
                 self.send_offsets[stream_id] = 0
@@ -116,19 +121,22 @@ class QUICServer:
                 pkt.header.pkt_num = self.pkt_num_inc()
                 pkt.header.dst_id = 0
                 if end:
-                    pkt.frame.type = Frame.STREAM if i + 1400 < len(data) else Frame.STREAM | Frame.FIN
+                    pkt.frame.type = (
+                        Frame.STREAM
+                        if i + 1400 < len(data)
+                        else Frame.STREAM | Frame.FIN
+                    )
                 else:
                     pkt.frame.type = Frame.STREAM
                 pkt.frame.stream_id = stream_id
                 pkt.frame.offset = i + self.send_offsets[stream_id]
-                pkt.frame.stream_data = data[i:min(i+1400, len(data))]
+                pkt.frame.stream_data = data[i : min(i + 1400, len(data))]
                 pkt.frame.length = len(pkt.frame.stream_data)
                 b = pkt.serialize()
                 self.send_wait_list.append((pkt.header.pkt_num, b, 0.0))
 
-                
                 i += 1400
-                
+
             self.send_offsets[stream_id] += i
 
     def send_task(self):
@@ -168,7 +176,7 @@ class QUICServer:
                 for i, (pkt_num, _, _) in enumerate(self.sender_window.get_buf()):
                     if pkt_num == pkt_num_to_del:
                         del self.sender_window.get_buf()[i]
-                
+
                 # congestion control
                 if self.slow_start:
                     self.sender_window.double_size()
@@ -177,14 +185,17 @@ class QUICServer:
                 if self.sender_window.get_size() >= self.ssthresh:
                     self.slow_start = False
 
-            elif pkt.frame.type == Frame.STREAM or pkt.frame.type == Frame.STREAM | Frame.FIN:
+            elif (
+                pkt.frame.type == Frame.STREAM
+                or pkt.frame.type == Frame.STREAM | Frame.FIN
+            ):
                 id = pkt.frame.stream_id
                 # new stream
                 if id not in self.recv_window:
                     self.recv_window[id] = []
                     self.recv_stream_offsets[id] = []
                     self.recv_read_ptr[id] = 0
-                
+
                 now_pos = math.ceil(pkt.frame.offset / 1400)
 
                 # bypass same packet
@@ -200,7 +211,7 @@ class QUICServer:
                     continue
                 else:
                     self.recv_stream_offsets[id].append(pkt.frame.offset)
-                
+
                 # reordering
                 if len(self.recv_window[id]) == now_pos:
                     # ordered
@@ -218,12 +229,14 @@ class QUICServer:
                 # the last frame
                 if pkt.frame.type == Frame.STREAM | Frame.FIN:
                     self.recv_stream_length[id] = now_pos + 1
-                
+
                 # check frame finish
                 for id, pieces in self.recv_stream_length.items():
-                    if len(self.recv_window[id]) == pieces and \
-                            id not in self.finished_stream and \
-                            None not in self.recv_window[id]:
+                    if (
+                        len(self.recv_window[id]) == pieces
+                        and id not in self.finished_stream
+                        and None not in self.recv_window[id]
+                    ):
                         self.finished_stream.append(id)
 
                 # reply ACK
@@ -258,8 +271,10 @@ class QUICServer:
                 try:
                     part = self.recv_window[k][self.recv_read_ptr[k]]
                     if part:
-                        if self.recv_read_ptr[k] == len(self.recv_window[k]) - 1  and \
-                        k in self.finished_stream:
+                        if (
+                            self.recv_read_ptr[k] == len(self.recv_window[k]) - 1
+                            and k in self.finished_stream
+                        ):
                             del self.recv_stream_length[k]
                             del self.recv_window[k]
                             return k, part, True
@@ -281,11 +296,12 @@ class QUICServer:
         self.recv_stream_offsets.clear()
         self.finished_stream.clear()
         self.sock.close()
-    
+
     def pkt_num_inc(self):
         r = self.pkt_num
         self.pkt_num += 1
         return r
+
 
 if __name__ == "__main__":
     server = QUICServer()

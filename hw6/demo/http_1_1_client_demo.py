@@ -3,21 +3,21 @@ import json
 import os
 import glob
 import xml.etree.ElementTree as ET
-        
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     client = http_1_1_client.HTTPClient()
 
     target_path = "../../target"
     response = client.get(url=f"127.0.0.1:8080/")
     file_list = []
-    if response and response.headers['content-type'] == 'text/html':
+    if response and response.headers["content-type"] == "text/html":
         root = ET.fromstring(response.body.decode())
-        links = root.findall('.//a')
+        links = root.findall(".//a")
         file_list = []
         for link in links:
-            file_list.append(link.text) 
+            file_list.append(link.text)
 
-    for file in glob.glob(os.path.join(target_path, '*.txt')):
+    for file in glob.glob(os.path.join(target_path, "*.txt")):
         os.remove(file)
 
     for file in file_list:

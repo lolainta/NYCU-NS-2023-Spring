@@ -6,6 +6,7 @@ import time, math
 
 now = lambda: time.time()
 
+
 class QUICClient:
     def __init__(self) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -63,7 +64,6 @@ class QUICClient:
         if pkt.frame.type == Frame.MAX_DATA:
             self.sender_window.size = pkt.frame.max_data
 
-
         # self.send_manager.daemon = True
         # self.receive_manager.daemon = True
         self.send_manager.start()
@@ -80,7 +80,9 @@ class QUICClient:
                 ptr = 0
                 stream_id_data[id] = []
                 while ptr <= len(data[i]):
-                    stream_id_data[id].append((ptr, data[i][ptr:min(ptr+1400, len(data[i]))]))
+                    stream_id_data[id].append(
+                        (ptr, data[i][ptr : min(ptr + 1400, len(data[i]))])
+                    )
                     ptr += 1400
 
             while all([len(datas) != 0 for datas in stream_id_data.values()]):
@@ -91,7 +93,11 @@ class QUICClient:
                         pkt.header.header_form = 0
                         pkt.header.pkt_num = self.pkt_num_inc()
                         pkt.header.dst_id = 0
-                        pkt.frame.type = Frame.STREAM if len(datas) != 0 else Frame.STREAM | Frame.FIN
+                        pkt.frame.type = (
+                            Frame.STREAM
+                            if len(datas) != 0
+                            else Frame.STREAM | Frame.FIN
+                        )
                         pkt.frame.stream_id = id
                         pkt.frame.offset = offset
                         pkt.frame.stream_data = data
@@ -99,7 +105,6 @@ class QUICClient:
                         b = pkt.serialize()
                         self.send_wait_list.append((pkt.header.pkt_num, b, 0.0))
 
-                    
         elif type(stream_id) == int and type(data) == bytes:
             if stream_id not in self.send_offsets.keys():
                 self.send_offsets[stream_id] = 0
@@ -110,19 +115,22 @@ class QUICClient:
                 pkt.header.pkt_num = self.pkt_num_inc()
                 pkt.header.dst_id = 0
                 if end:
-                    pkt.frame.type = Frame.STREAM if i + 1400 < len(data) else Frame.STREAM | Frame.FIN
+                    pkt.frame.type = (
+                        Frame.STREAM
+                        if i + 1400 < len(data)
+                        else Frame.STREAM | Frame.FIN
+                    )
                 else:
                     pkt.frame.type = Frame.STREAM
                 pkt.frame.stream_id = stream_id
                 pkt.frame.offset = i + self.send_offsets[stream_id]
-                pkt.frame.stream_data = data[i:min(i+1400, len(data))]
+                pkt.frame.stream_data = data[i : min(i + 1400, len(data))]
                 pkt.frame.length = len(pkt.frame.stream_data)
                 b = pkt.serialize()
                 self.send_wait_list.append((pkt.header.pkt_num, b, 0.0))
 
-                
                 i += 1400
-                
+
             self.send_offsets[stream_id] += i
 
     def send_task(self):
@@ -176,7 +184,10 @@ class QUICClient:
                 if self.sender_window.get_size() >= self.ssthresh:
                     self.slow_start = False
 
-            elif pkt.frame.type == Frame.STREAM or pkt.frame.type == Frame.STREAM | Frame.FIN:
+            elif (
+                pkt.frame.type == Frame.STREAM
+                or pkt.frame.type == Frame.STREAM | Frame.FIN
+            ):
                 id = pkt.frame.stream_id
                 if id in self.drop_id:
                     continue
@@ -185,7 +196,7 @@ class QUICClient:
                     self.recv_window[id] = []
                     self.recv_stream_offsets[id] = []
                     self.recv_read_ptr[id] = 0
-                
+
                 now_pos = math.ceil(pkt.frame.offset / 1400)
 
                 # bypass same packet
@@ -219,12 +230,14 @@ class QUICClient:
                 # the last frame
                 if pkt.frame.type == Frame.STREAM | Frame.FIN:
                     self.recv_stream_length[id] = now_pos + 1
-                
+
                 # check frame finish
                 for id, pieces in self.recv_stream_length.items():
-                    if len(self.recv_window[id]) == pieces and \
-                            id not in self.finished_stream and \
-                            None not in self.recv_window[id]:
+                    if (
+                        len(self.recv_window[id]) == pieces
+                        and id not in self.finished_stream
+                        and None not in self.recv_window[id]
+                    ):
                         self.finished_stream.append(id)
 
                 # reply ACK
@@ -257,8 +270,10 @@ class QUICClient:
                 try:
                     part = self.recv_window[k][self.recv_read_ptr[k]]
                     if part:
-                        if self.recv_read_ptr[k] == len(self.recv_window[k]) - 1  and \
-                        k in self.finished_stream:
+                        if (
+                            self.recv_read_ptr[k] == len(self.recv_window[k]) - 1
+                            and k in self.finished_stream
+                        ):
                             del self.recv_stream_length[k]
                             del self.recv_window[k]
                             return k, part, True
@@ -268,7 +283,6 @@ class QUICClient:
                 except:
                     pass
         return None, None, False
-
 
     def drop(self, stream_id):
         self.drop_id.append(stream_id)
@@ -289,11 +303,12 @@ class QUICClient:
         self.recv_stream_length.clear()
         self.recv_stream_offsets.clear()
         self.finished_stream.clear()
-        
+
     def pkt_num_inc(self):
         r = self.pkt_num
         self.pkt_num += 1
         return r
+
 
 if __name__ == "__main__":
     client = QUICClient()

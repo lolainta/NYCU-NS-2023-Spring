@@ -7,7 +7,7 @@ from collections import deque
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # Bind the socket to a specific address and port
-server_address = ('localhost', 10000)
+server_address = ("localhost", 10000)
 sock.bind(server_address)
 
 # Initialize the sliding window
@@ -35,17 +35,17 @@ packets_sent = 0
 
 while True:
     # Wait for data from a client
-    print('waiting for data')
+    print("waiting for data")
     data, client_address = sock.recvfrom(1024)
 
     # Extract the packet number and payload
-    packet_number, = struct.unpack('!I', data[:4])
+    (packet_number,) = struct.unpack("!I", data[:4])
     payload = data[4:]
 
     # Check if the packet is within the current window
     if packet_number >= window_start and packet_number < window_end:
         # Send an acknowledgement for the packet
-        ack = struct.pack('!I', packet_number)
+        ack = struct.pack("!I", packet_number)
         sock.sendto(ack, client_address)
 
         # Add the packet to the acknowledged set
@@ -62,7 +62,7 @@ while True:
 
     else:
         # Send a negative acknowledgement for the packet
-        nack = struct.pack('!I', -1)
+        nack = struct.pack("!I", -1)
         sock.sendto(nack, client_address)
 
         # Add the packet to the retransmission queue
