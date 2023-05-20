@@ -1,4 +1,3 @@
-import socket
 import threading
 from datetime import datetime
 import json
@@ -9,6 +8,7 @@ import random
 from Utils import Parser
 from QUIC import quic_server
 import time
+import os, io
 
 
 def hmac_sha256(data, key):
@@ -20,11 +20,12 @@ def hmac_sha256(data, key):
 
 
 class ClientHandler:
-    def __init__(self, client, address) -> None:
+    def __init__(self, client, address, static) -> None:
+        self.static = static
         self.client = client
         self.address = address
         self.alive = True
-        self.key = hmac_sha256(f"key{random.random()*100}", "http11")
+        self.key = hmac_sha256(f"key{random.random()*100}", "http30")
         self.recv_thread = threading.Thread(target=self.__recv_loop)
         self.recv_thread.start()
 
@@ -50,12 +51,32 @@ class ClientHandler:
         path = request["path"]
         params = request["params"]
         response = self.__not_found_response()
+        files = os.listdir(self.static)
         if path == "/":
             response["status"] = "200 OK"
-            response["headers"] = {"Content-Type": "text/html"}
-            response["body"] = "<html><body>" + "<h1>HTTP 1.0</h1>" + "</body></html>"
+            files = random.sample(files, k=3)
+            response[
+                "body"
+            ] = """
+            <html>
+                <header></header>
+                <body>
+                    <a href="/static/{0}">{0}</a>
+                    <br/>
+                    <a href="/static/{1}">{1}</a>
+                    <br/>
+                    <a href="/static/{2}">{2}</a>
+                </body>
+            </html>
+            """.format(
+                *files
+            )
+            response["headers"] = {
+                "Content-Type": "text/html",
+                "Content-Length": len(response["body"]),
+            }
         elif path == "/get":
-            if "id" in params:
+            if "id" in params and len(self.recv_streams) > 1:
                 response["status"] = "200 OK"
                 response["headers"] = {"Content-Type": "application/json"}
                 response["body"] = json.dumps({"id": params["id"], "key": self.key})
@@ -63,6 +84,21 @@ class ClientHandler:
                 response["status"] = "200 OK"
                 response["headers"] = {"Content-Type": "application/json"}
                 response["body"] = json.dumps({"id": "", "key": ""})
+        elif path[:8] == "/static/":
+            if path[8:] in files:
+                response["status"] = "200 OK"
+                content = ""
+                with io.open(os.path.join(self.static, path[8:]), "r", newline="") as f:
+                    content = f.readlines()
+                content = "".join(content)
+                response["body"] = content
+                response["headers"] = {
+                    "Content-Type": "Content-Type: text/plain",
+                    "Content-Length": len(content),
+                }
+        else:
+            print(path)
+        print(response["headers"])
         self.__send_response(request, response)
 
     def __do_post(self, request):
@@ -107,8 +143,7 @@ class ClientHandler:
         for key in response["headers"]:
             response_str += f"{key}: {response['headers'][key]}\r\n"
         response_str += f"\r\n{response['body']}"
-
-        self.client.send(stream_id, response_str.encode())
+        self.client.send(stream_id, response_str.encode(), True)
 
         # Log
         print(
@@ -119,7 +154,7 @@ class ClientHandler:
         while self.alive:
             try:
                 # Recv request
-                stream_id, recv_bytes = self.client.recv()
+                stream_id, recv_bytes, _ = self.client.recv()
                 print(stream_id, recv_bytes)
 
                 # check connection
@@ -127,8 +162,18 @@ class ClientHandler:
                     self.close()
                     break
 
-                # parse request
-                request = Parser.parse_reqeust(recv_bytes.decode())
+                headers = Parser.parse_header(recv_bytes.decode())
+                path, params = Parser.parse_resource(headers[":path"])
+                request = {
+                    "stream_id": stream_id,
+                    "method": headers[":method"],
+                    "path": path,
+                    "params": params,
+                    "scheme": headers[":scheme"],
+                    "version": "HTTP/3.0",
+                    "headers": headers,
+                }
+                print(request)
                 if request == None:
                     method = ""
                 else:
@@ -144,7 +189,7 @@ class ClientHandler:
 
                 # keep connection: don't close socket
 
-            except:
+            except Exception as e:
                 self.alive = False
                 self.client.close()
                 break
@@ -154,11 +199,11 @@ class ClientHandler:
         self.client.close()
 
 
-class HttpServer_3_0:
+class HTTPServer:
     def __init__(self, host="127.0.0.1", port=8080) -> None:
         # Create a socket object
-        self.socket = quic_server.QUICServer(host, port)
-        self.socket.drop(3)
+        self.socket = quic_server.QUICServer()
+        self.socket.listen((host, port))
         self.host = host
         self.port = port
         self.handler = None
@@ -170,19 +215,23 @@ class HttpServer_3_0:
                 if self.handler is None:
                     # Establish a connection with the client
                     self.socket.accept()
-
-                    client_handler = ClientHandler(self.socket, self.socket.client_addr)
-
+                    client_handler = ClientHandler(
+                        self.socket, self.socket.client_addr, self.static
+                    )
                     self.handler = client_handler
                 if self.handler and not self.handler.alive:
                     self.handler = None
-                    self.socket = quic_server.QUICServer(self.host, self.port)
-                    self.socket.drop(3)
+                    self.socket = quic_server.QUICServer()
+                    self.socket.listen((self.host, self.port))
                 time.sleep(0.01)
 
-            except:
+            except Exception as e:
+                print(e)
                 # catch socket closed
                 pass
+
+    def set_static(self, static):
+        self.static = static
 
     def run(self):
         if not self.alive:
@@ -202,7 +251,8 @@ class HttpServer_3_0:
 
 
 if __name__ == "__main__":
-    server = HttpServer_3_0()
+    server = HTTPServer(host="127.0.0.1", port=8080)
+    server.set_static("../../static")
     server.run()
 
     while True:
