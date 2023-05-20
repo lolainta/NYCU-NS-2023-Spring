@@ -243,7 +243,7 @@ class HTTPServer:
 
 
 if __name__ == "__main__":
-    server = HTTPServer(host="127.0.0.1", port=8081)
+    server = HTTPServer(host="127.0.0.1", port=8080)
     server.set_static("../../static")
     server.run()
     while True:

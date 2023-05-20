@@ -58,7 +58,8 @@ class HTTPClient:
             try:
                 self.socket.connect((self.host, self.port))
                 self.connecting = True
-            except:
+            except Exception as e:
+                print(e)
                 return None
         try:
             self.socket.sendall(request.encode())
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     client = HTTPClient()
 
     target_path = "../../target"
-    response = client.get(url=f"127.0.0.1:8081/")
+    response = client.get(url=f"127.0.0.1:8080/")
     file_list = []
     if response and response.headers["content-type"] == "text/html":
         root = ET.fromstring(response.body.decode())
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         os.remove(file)
 
     for file in file_list:
-        response = client.get(f"127.0.0.1:8081/static/{file}", stream=True)
+        response = client.get(f"127.0.0.1:8080/static/{file}", stream=True)
         file_path = f"{target_path}/{file}"
         if response:
             print(f"{file_path} begin")
