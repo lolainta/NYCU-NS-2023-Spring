@@ -8,7 +8,8 @@ import base64
 import random
 from Utils import Frame
 from Utils import Parser
-import time
+import os
+import io
 
 
 def hmac_sha256(data, key):
@@ -20,7 +21,8 @@ def hmac_sha256(data, key):
 
 
 class ClientHandler:
-    def __init__(self, client, address) -> None:
+    def __init__(self, client: socket.socket, address, static) -> None:
+        self.static = static
         self.client = client
         self.client.settimeout(5)
         self.address = address
@@ -28,8 +30,7 @@ class ClientHandler:
         self.recv_buffer = b""
         self.recv_streams = {}
         self.send_buffers = {}
-
-        self.key = hmac_sha256(f"key{random.random()*100}", "http11")
+        self.key = hmac_sha256(f"key{random.random()*100}", "http20")
         self.recv_thread = threading.Thread(target=self.__recv_loop)
         self.recv_thread.start()
         self.send_thread = threading.Thread(target=self.__send_loop)
@@ -37,7 +38,7 @@ class ClientHandler:
 
     def __bad_request_response(self):
         response = {
-            "version": "HTTP/2.0",  # e.g. "HTTP/1.0"
+            "version": "HTTP/2.0",  # e.g. "HTTP/2.0"
             "status": "400 Bad Request",  # e.g. "200 OK"
             "headers": {
                 "Content-Type": "text/html"
@@ -48,7 +49,7 @@ class ClientHandler:
 
     def __not_found_response(self):
         response = {
-            "version": "HTTP/2.0",  # e.g. "HTTP/1.0"
+            "version": "HTTP/2.0",  # e.g. "HTTP/2.0"
             "status": "404 Not Found",  # e.g. "200 OK"
             "headers": {
                 "Content-Type": "text/html"
@@ -61,10 +62,30 @@ class ClientHandler:
         path = request["path"]
         params = request["params"]
         response = self.__not_found_response()
+        files = os.listdir(self.static)
         if path == "/":
             response["status"] = "200 OK"
-            response["headers"] = {"Content-Type": "text/html"}
-            response["body"] = "<html><body>" + "<h1>HTTP 1.0</h1>" + "</body></html>"
+            files = random.sample(files, k=3)
+            response[
+                "body"
+            ] = """
+            <html>
+                <header></header>
+                <body>
+                    <a href="/static/{0}">{0}</a>
+                    <br/>
+                    <a href="/static/{1}">{1}</a>
+                    <br/>
+                    <a href="/static/{2}">{2}</a>
+                </body>
+            </html>
+            """.format(
+                *files
+            )
+            response["headers"] = {
+                "Content-Type": "text/html",
+                "Content-Length": len(request["body"]),
+            }
         elif path == "/get":
             if "id" in params and len(self.recv_streams) > 1:
                 response["status"] = "200 OK"
@@ -74,6 +95,20 @@ class ClientHandler:
                 response["status"] = "200 OK"
                 response["headers"] = {"Content-Type": "application/json"}
                 response["body"] = json.dumps({"id": "", "key": ""})
+        elif path[:8] == "/static/":
+            if path[8:] in files:
+                response["status"] = "200 OK"
+                content = ""
+                with io.open(os.path.join(self.static, path[8:]), "r", newline="") as f:
+                    content = f.readlines()
+                content = "".join(content)
+                response["body"] = content
+                response["headers"] = {
+                    "Content-Type": "Content-Type: text/plain",
+                    "Content-Length": len(content),
+                }
+        else:
+            print(path)
         self.__send_response(request, response)
 
     def __do_post(self, request):
@@ -190,7 +225,6 @@ class ClientHandler:
             try:
                 # Recv request
                 recv_bytes = self.client.recv(8192)
-
                 # check connection
                 if not recv_bytes:
                     self.alive = False
@@ -223,8 +257,8 @@ class ClientHandler:
         self.client.close()
 
 
-class HttpServer_2_0:
-    def __init__(self, host="10.0.1.1", port=8080) -> None:
+class HTTPServer:
+    def __init__(self, host="127.0.0.1", port=8080) -> None:
         # Create a socket object
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -244,17 +278,21 @@ class HttpServer_2_0:
             try:
                 # Establish a connection with the client
                 client, address = self.socket.accept()
-                client_handler = ClientHandler(client, address)
+                print(client, address)
+
+                client_handler = ClientHandler(client, address, self.static)
 
                 for handler in reversed(self.handler_list):
                     if not handler.alive:
                         self.handler_list.remove(handler)
                 self.handler_list.append(client_handler)
-
+                print("accepted")
             except:
                 # catch socket closed
                 self.alive = False
-                pass
+
+    def set_static(self, static):
+        self.static = static
 
     def run(self):
         if not self.alive:
@@ -272,7 +310,8 @@ class HttpServer_2_0:
 
 
 if __name__ == "__main__":
-    server = HttpServer_2_0()
+    server = HTTPServer(host="127.0.0.1", port=8084)
+    server.set_static("../../static")
     server.run()
 
     while True:

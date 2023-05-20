@@ -1,9 +1,57 @@
 import socket
 import threading
-import json
 import time
 from Utils import Frame
 from Utils import Parser
+
+import os
+import glob
+import threading
+import xml.etree.ElementTree as ET
+from urllib.parse import urlparse
+from collections import deque
+
+
+class Response:
+    def __init__(self, stream_id, headers={}, status="Not yet") -> None:
+        self.stream_id = stream_id
+        self.headers = headers
+
+        self.status = status
+        self.body = b""
+
+        self.contents = deque()
+        self.complete = False
+
+    def get_headers(self):
+        begin_time = time.time()
+        while self.status == "Not yet":
+            if time.time() - begin_time > 5:
+                return None
+        return self.headers
+
+    def get_full_body(self):  # used for handling short body
+        begin_time = time.time()
+        while not self.complete:
+            if time.time() - begin_time > 5:
+                return None
+        if len(self.body) > 0:
+            return self.body
+        while len(self.contents) > 0:
+            self.body += self.contents.popleft()
+        return self.body  # the full content of HTTP response body
+
+    def get_stream_content(self):  # used for handling long body
+        begin_time = time.time()
+        while (
+            len(self.contents) == 0
+        ):  # contents is a buffer, busy waiting for new content
+            if (
+                self.complete or time.time() - begin_time > 5
+            ):  # if response is complete or timeout
+                return None
+        content = self.contents.popleft()  # pop content from deque
+        return content  # the part content of the HTTP response body
 
 
 class HTTPClient:
@@ -15,7 +63,7 @@ class HTTPClient:
         self.next_stream_id += 2
         return stream_id
 
-    def connect(self, host="10.0.1.1", port=8080):
+    def connect(self, host="127.0.0.1", port=8080):
         if not self.connecting:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.settimeout(5)
@@ -31,7 +79,8 @@ class HTTPClient:
                 self.recv_thread.start()
                 self.send_thread = threading.Thread(target=self.__send_loop)
                 self.send_thread.start()
-            except:
+            except Exception as e:
+                print(e)
                 self.connecting = False
                 self.socket.close()
 
@@ -65,7 +114,10 @@ class HTTPClient:
                 except:
                     return None
                 del self.recv_streams[stream_id]
-                return response
+                ret = Response(stream_id, response["headers"], response["status"])
+                ret.contents.append(response["body"].encode())
+                ret.complete = True
+                return ret
             wait_count += 1
             time.sleep(0.01)
         del self.recv_streams[stream_id]
@@ -85,7 +137,8 @@ class HTTPClient:
                         time.sleep(0.002)
                 for key in end_streams:
                     del self.send_buffers[key]
-            except:
+            except Exception as e:
+                print(e)
                 self.connecting = False
                 self.socket.close()
                 break
@@ -144,7 +197,8 @@ class HTTPClient:
 
     def send_reqeuest(self, request):
         if not self.connecting:
-            return
+            self.connect(self.host, self.port)
+
         stream_id = self.__get_next_stream_id()
         self.recv_streams[stream_id] = {
             "request": request,
@@ -159,44 +213,69 @@ class HTTPClient:
             self.__send_body(stream_id, body)
         else:
             self.__send_headers(stream_id, headers, end_stream=True)
-        return stream_id
+        return self.wait_for_response(stream_id)
+
+    def get(self, url: str, stream=True):
+        if url[:7] != "http://":
+            url = "http://" + url
+        urlo = urlparse(url)
+        self.host = urlo.hostname
+        self.port = urlo.port
+        request = {
+            "headers": [
+                (":method", "GET"),
+                (":path", urlo.path),
+                (":scheme", "http"),
+                (":authority", urlo.netloc),
+            ]
+        }
+        return self.send_reqeuest(request)
 
     def close(self):
         self.connecting = False
         self.socket.close()
 
 
+def write_file_from_response(file_path, response):
+    if response:
+        print(f"{file_path} begin")
+        with open(file_path, "wb") as f:
+            while True:
+                content = response.get_stream_content()
+                if content is None:
+                    break
+                f.write(content)
+        print(f"{file_path} end")
+    else:
+        print("no response")
+
+
 if __name__ == "__main__":
     client = HTTPClient()
-    client.connect()
+    target_path = "../../target"
+    response = client.get(url=f"127.0.0.1:8084/")
+    file_list = []
+    if response:
+        headers = response.get_headers()
+        if headers["content-type"] == "text/html":
+            body = response.get_full_body()
+            root = ET.fromstring(body.decode())
+            links = root.findall(".//a")
+            file_list = []
+            for link in links:
+                file_list.append(link.text)
 
-    headers = [
-        (":method", "GET"),
-        (":path", "/get?id=123"),
-        (":scheme", "http"),
-        (":authority", "127.0.0.1:8080"),
-    ]
-    body = b"0" * 10
-    request = {"headers": headers, "body": body}
+    for file in glob.glob(os.path.join(target_path, "*.txt")):
+        os.remove(file)
 
-    stream_id_1 = client.send_reqeuest(request)
-    stream_id_2 = client.send_reqeuest(request)
-    response = client.wait_for_response(stream_id_1)
-    data = response["body"]
-    print(stream_id_1, response)
-    response = client.wait_for_response(stream_id_2)
-    print(stream_id_2, response)
-    headers = [
-        (":method", "POST"),
-        (":path", "/post"),
-        (":scheme", "http"),
-        (":authority", "127.0.0.1:8080"),
-        ("content-type", "application/json"),
-    ]
-    body = data.encode()
-    request = {"headers": headers, "body": body}
-    stream_id_3 = client.send_reqeuest(request)
-    response = client.wait_for_response(stream_id_3)
-    print(stream_id_3, response)
+    th_list = []
+    for file in file_list:
+        response = client.get(f"127.0.0.1:8084/static/{file}")
+        th = threading.Thread(
+            target=write_file_from_response, args=[f"{target_path}/{file}", response]
+        )
+        th_list.append(th)
+        th.start()
 
-    client.close()
+    for th in th_list:
+        th.join()
