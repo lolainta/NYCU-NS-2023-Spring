@@ -253,7 +253,7 @@ def write_file_from_response(file_path, response):
 if __name__ == "__main__":
     client = HTTPClient()
     target_path = "../../target"
-    response = client.get(url=f"127.0.0.1:8080/")
+    response = client.get(url=f"10.0.1.1:8080/")
     file_list = []
     if response:
         headers = response.get_headers()
@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     th_list = []
     for file in file_list:
-        response = client.get(f"127.0.0.1:8080/static/{file}")
+        response = client.get(f"10.0.1.1:8080/static/{file}")
         th = threading.Thread(
             target=write_file_from_response, args=[f"{target_path}/{file}", response]
         )

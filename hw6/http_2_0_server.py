@@ -10,6 +10,7 @@ from Utils import Frame
 from Utils import Parser
 import os
 import io
+import time
 
 
 def hmac_sha256(data, key):
@@ -210,6 +211,7 @@ class ClientHandler:
                 for key in keys:
                     if len(self.send_buffers[key]) > 0:
                         frame = self.send_buffers[key].pop(0)
+                        time.sleep(0.01)
                         self.client.sendall(frame.to_bytes())
                         if frame.flags == 1:
                             end_streams.append(key)
@@ -278,7 +280,6 @@ class HTTPServer:
             try:
                 # Establish a connection with the client
                 client, address = self.socket.accept()
-                print(client, address)
 
                 client_handler = ClientHandler(client, address, self.static)
 
@@ -310,7 +311,7 @@ class HTTPServer:
 
 
 if __name__ == "__main__":
-    server = HTTPServer(host="127.0.0.1", port=8080)
+    server = HTTPServer(host="10.0.1.1", port=8080)
     server.set_static("../../static")
     server.run()
 

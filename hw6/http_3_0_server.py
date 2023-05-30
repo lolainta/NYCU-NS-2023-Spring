@@ -98,14 +98,12 @@ class ClientHandler:
                 }
         else:
             print(path)
-        print(response["headers"])
         self.__send_response(request, response)
 
     def __do_post(self, request):
         path = request["path"]
         headers = request["headers"]
         response = self.__not_found_response()
-        print(request)
         if path == "/post":
             if (
                 "content-type" in headers
@@ -126,12 +124,10 @@ class ClientHandler:
                     response["status"] = "200 OK"
                     response["headers"] = {"Content-Type": "application/json"}
                     response["body"] = json.dumps({"success": True})
-                    print(post_data["id"], "success")
                 else:
                     response["status"] = "200 OK"
                     response["headers"] = {"Content-Type": "application/json"}
                     response["body"] = json.dumps({"success": False})
-                    print(post_data["id"], "fail")
             else:
                 response = self.__bad_request_response()
         self.__send_response(request, response)
@@ -155,7 +151,6 @@ class ClientHandler:
             try:
                 # Recv request
                 stream_id, recv_bytes, _ = self.client.recv()
-                print(stream_id, recv_bytes)
 
                 # check connection
                 if not stream_id:
@@ -173,7 +168,6 @@ class ClientHandler:
                     "version": "HTTP/3.0",
                     "headers": headers,
                 }
-                print(request)
                 if request == None:
                     method = ""
                 else:
@@ -251,7 +245,7 @@ class HTTPServer:
 
 
 if __name__ == "__main__":
-    server = HTTPServer(host="127.0.0.1", port=8080)
+    server = HTTPServer(host="10.0.1.1", port=8080)
     server.set_static("../../static")
     server.run()
 
