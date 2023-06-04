@@ -4,10 +4,10 @@ from mininet.topo import Topo
 class NSCAP_HW7(Topo):
     def build(self):
         # Add hosts and switches
-        h1 = self.addHost("h1")
-        h2 = self.addHost("h2")
-        h3 = self.addHost("h3")
-        h4 = self.addHost("h4")
+        h1 = self.addHost("h1", ip="10.0.0.1")
+        h2 = self.addHost("h2", ip="10.0.0.2")
+        h3 = self.addHost("h3", ip="10.0.0.3")
+        h4 = self.addHost("h4", ip="10.0.0.4")
         sw = self.addSwitch("s1")
 
         # Add links
@@ -17,4 +17,4 @@ class NSCAP_HW7(Topo):
         self.addLink(sw, h4)
 
 
-topos = {"part1": (lambda: NSCAP_HW7())}
+topos = {"VM1": (lambda: NSCAP_HW7())}
